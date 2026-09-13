@@ -8,14 +8,21 @@ import Markdown from './Markdown';
 const CJ_SOURCES_SENTINEL = '\n\nCJ Router sources relied upon:';
 const CJ_TIMING_SENTINEL = '\n\n---\n_CJ Router:';
 
-// Mirrors strip_model_source_section() in router.py — strips the model's own
-// trailing "Sources" / "References" / "Citations" section. This is needed in
-// streaming path where the server-side strip hasn't run.
-const MODEL_SOURCE_RE =
+// Strips the model's trailing "Sources" / "References" / "Citations" section.
+// Two patterns cover the formats models use:
+//   Multi-line: "Sources:\n- item\n- item" (server-side regex already handles this
+//     in non-streaming path; we mirror it here for streaming)
+//   Inline:     "Sources: [1] url, [2] url" (single line — not caught by server)
+const MODEL_SOURCE_MULTILINE_RE =
   /\n{1,3}(?:#{1,4}\s*)?(?:sources|references|citations)\s*:?\s*\n(?:\s*(?:[-*]|\d+[.)]|\[\d+\])?.{0,500}\n?){1,40}\s*$/im;
+const MODEL_SOURCE_INLINE_RE =
+  /\n+(?:#{1,4}\s*)?(?:sources|references|citations):[^\n]*\n*$/im;
 
 function stripModelSourceSection(text: string): string {
-  return text.replace(MODEL_SOURCE_RE, '').trimEnd();
+  return text
+    .replace(MODEL_SOURCE_MULTILINE_RE, '')
+    .replace(MODEL_SOURCE_INLINE_RE, '')
+    .trimEnd();
 }
 
 export interface CJFooterParts {
