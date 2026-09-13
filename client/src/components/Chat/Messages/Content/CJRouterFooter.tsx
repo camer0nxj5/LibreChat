@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import Markdown from './Markdown';
 
@@ -8,9 +8,19 @@ import Markdown from './Markdown';
 const CJ_SOURCES_SENTINEL = '\n\nCJ Router sources relied upon:';
 const CJ_TIMING_SENTINEL = '\n\n---\n_CJ Router:';
 
+// Mirrors strip_model_source_section() in router.py — strips the model's own
+// trailing "Sources" / "References" / "Citations" section. This is needed in
+// streaming path where the server-side strip hasn't run.
+const MODEL_SOURCE_RE =
+  /\n{1,3}(?:#{1,4}\s*)?(?:sources|references|citations)\s*:?\s*\n(?:\s*(?:[-*]|\d+[.)]|\[\d+\])?.{0,500}\n?){1,40}\s*$/im;
+
+function stripModelSourceSection(text: string): string {
+  return text.replace(MODEL_SOURCE_RE, '').trimEnd();
+}
+
 export interface CJFooterParts {
   mainText: string;
-  sourcesText: string; // "CJ Router sources relied upon:\n- [Title](url)..."
+  sourcesText: string; // "CJ Router sources relied upon:\n1. SECONDARY: [Title](url)..."
   footerText: string;  // "---\n_CJ Router: Model: X | Time: Y_"
 }
 
@@ -39,7 +49,8 @@ export function parseCJFooter(content: string): CJFooterParts | null {
 }
 
 function countSources(sourcesText: string): number {
-  return (sourcesText.match(/^- \[/gm) ?? []).length;
+  // CJ Router emits numbered list: "1. SECONDARY: [Title](url)"
+  return (sourcesText.match(/^\d+\./gm) ?? []).length;
 }
 
 interface CJRouterFooterProps {
@@ -55,25 +66,34 @@ const CJRouterFooter = memo(function CJRouterFooter({
   footerText,
   isLatestMessage,
 }: CJRouterFooterProps) {
+  const [open, setOpen] = useState(false);
+  const cleanMain = useMemo(() => stripModelSourceSection(mainText), [mainText]);
   const sourceCount = useMemo(() => countSources(sourcesText), [sourcesText]);
 
   return (
     <>
-      <Markdown content={mainText} isLatestMessage={isLatestMessage} />
+      <Markdown content={cleanMain} isLatestMessage={isLatestMessage} />
 
       {sourcesText.length > 0 && (
-        <details className="group mt-2">
-          <summary className="flex cursor-pointer list-none items-center gap-1 py-0.5 text-xs text-text-secondary hover:text-text-primary [&::-webkit-details-marker]:hidden select-none">
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="flex cursor-pointer items-center gap-1 py-0.5 text-xs text-text-secondary hover:text-text-primary select-none"
+            aria-expanded={open}
+          >
             <ChevronDown
-              className="h-3 w-3 flex-shrink-0 transition-transform duration-200 group-open:rotate-180"
+              className={`h-3 w-3 flex-shrink-0 transition-transform duration-200${open ? ' rotate-180' : ''}`}
               aria-hidden="true"
             />
             Sources{sourceCount > 0 ? ` (${sourceCount})` : ''}
-          </summary>
-          <div className="mt-1 border-l-2 border-border-light pl-3">
-            <Markdown content={sourcesText} isLatestMessage={false} />
-          </div>
-        </details>
+          </button>
+          {open && (
+            <div className="mt-1 border-l-2 border-border-light pl-3">
+              <Markdown content={sourcesText} isLatestMessage={false} />
+            </div>
+          )}
+        </div>
       )}
 
       {footerText.length > 0 && (
