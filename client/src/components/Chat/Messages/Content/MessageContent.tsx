@@ -18,6 +18,7 @@ import Container from './Container';
 import Markdown from './Markdown';
 import { cn } from '~/utils';
 import store from '~/store';
+import CJRouterFooter, { parseCJFooter } from './CJRouterFooter';
 
 const ERROR_CONNECTION_TEXT = 'Error connecting to server, try refreshing the page.';
 const DELAYED_ERROR_TIMEOUT = 5500;
@@ -105,6 +106,17 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
 
   const content = useMemo(() => {
     if (!isCreatedByUser) {
+      const cjParts = parseCJFooter(text);
+      if (cjParts) {
+        return (
+          <CJRouterFooter
+            mainText={cjParts.mainText}
+            sourcesText={cjParts.sourcesText}
+            footerText={cjParts.footerText}
+            isLatestMessage={isLatestMessage}
+          />
+        );
+      }
       return <Markdown content={text} isLatestMessage={isLatestMessage} />;
     }
     if (enableUserMsgMarkdown) {
