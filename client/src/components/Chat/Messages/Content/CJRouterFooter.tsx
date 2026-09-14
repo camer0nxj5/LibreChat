@@ -2,12 +2,6 @@ import { memo, useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import Markdown from './Markdown';
 
-// Sentinels must match what build_web_sources_footer() and build_response_footer()
-// emit in router.py. The sources sentinel starts with \n\n so mainText never
-// includes trailing whitespace; the timing sentinel starts with \n\n---\n.
-const CJ_SOURCES_SENTINEL = '\n\nCJ Router sources relied upon:';
-const CJ_TIMING_SENTINEL = '\n\n---\n_CJ Router:';
-
 // Strips the model's trailing "Sources" / "References" / "Citations" section.
 // Two patterns cover the formats models use:
 //   Multi-line: "Sources:\n- item\n- item" (server-side regex already handles this
@@ -31,27 +25,36 @@ export interface CJFooterParts {
   footerText: string;  // "---\n_CJ Router: Model: X | Time: Y_"
 }
 
+// Plain text markers (no leading newlines) — robust against \r\n vs \n variations.
+// We normalize \r\n → \n before searching so Windows-style SSE line endings
+// in the stored message text don't prevent detection.
+const SOURCES_MARKER = 'CJ Router sources relied upon:';
+const FOOTER_MARKER = '\n---\n';
+
 /** Returns parsed parts when the CJ Router sources sentinel is present, else null. */
 export function parseCJFooter(content: string): CJFooterParts | null {
-  const srcIdx = content.indexOf(CJ_SOURCES_SENTINEL);
-  if (srcIdx === -1) {
-    return null;
-  }
+  // Normalize CRLF so indexOf works regardless of line-ending style in stored text.
+  const text = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  const mainText = content.slice(0, srcIdx);
-  // Skip the leading \n\n — sources section starts with "CJ Router sources..."
-  const sourcesAndMaybeFooter = content.slice(srcIdx + 2);
+  const srcIdx = text.indexOf(SOURCES_MARKER);
+  if (srcIdx === -1) return null;
 
-  const ftrIdx = sourcesAndMaybeFooter.indexOf(CJ_TIMING_SENTINEL);
+  // mainText = everything before "CJ Router sources…", trimmed
+  const mainText = text.slice(0, srcIdx).trimEnd();
+  // sourcesBlock starts at "CJ Router sources relied upon:..."
+  const sourcesBlock = text.slice(srcIdx);
+
+  const ftrIdx = sourcesBlock.indexOf(FOOTER_MARKER);
   if (ftrIdx === -1) {
-    return { mainText, sourcesText: sourcesAndMaybeFooter, footerText: '' };
+    return { mainText, sourcesText: sourcesBlock.trimEnd(), footerText: '' };
   }
 
   return {
     mainText,
-    sourcesText: sourcesAndMaybeFooter.slice(0, ftrIdx),
-    // Skip the leading \n\n — footer starts with "---\n_CJ Router:..."
-    footerText: sourcesAndMaybeFooter.slice(ftrIdx + 2),
+    // Everything up to the "\n---\n" separator, trimmed
+    sourcesText: sourcesBlock.slice(0, ftrIdx).trimEnd(),
+    // "\n---\n_CJ Router:..." → skip leading \n so footerText starts at "---"
+    footerText: sourcesBlock.slice(ftrIdx + 1).trimEnd(),
   };
 }
 
