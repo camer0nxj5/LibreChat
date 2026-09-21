@@ -1,12 +1,13 @@
-import { memo, useMemo, ReactElement } from 'react';
-import { useRecoilValue } from 'recoil';
-import MarkdownLite from '~/components/Chat/Messages/Content/MarkdownLite';
-import useSmoothStreaming from '~/hooks/Messages/useSmoothStreaming';
-import Markdown from '~/components/Chat/Messages/Content/Markdown';
-import CollapsibleText from './CollapsibleText';
-import { useMessageContext } from '~/Providers';
-import { cn } from '~/utils';
-import store from '~/store';
+import { memo, useMemo, ReactElement } from "react";
+import { useRecoilValue } from "recoil";
+import MarkdownLite from "~/components/Chat/Messages/Content/MarkdownLite";
+import useSmoothStreaming from "~/hooks/Messages/useSmoothStreaming";
+import Markdown from "~/components/Chat/Messages/Content/Markdown";
+import { CJRouterMessage } from "../CJRouterFooter";
+import CollapsibleText from "./CollapsibleText";
+import { useMessageContext } from "~/Providers";
+import { cn } from "~/utils";
+import store from "~/store";
 
 type TextPartProps = {
   text: string;
@@ -19,10 +20,16 @@ type ContentType =
   | ReactElement<React.ComponentProps<typeof MarkdownLite>>
   | ReactElement;
 
-const TextPart = memo(function TextPart({ text, isCreatedByUser, showCursor }: TextPartProps) {
+const TextPart = memo(function TextPart({
+  text,
+  isCreatedByUser,
+  showCursor,
+}: TextPartProps) {
   const { isSubmitting = false, isLatestMessage = false } = useMessageContext();
   const enableUserMsgMarkdown = useRecoilValue(store.enableUserMsgMarkdown);
-  const collapseLongUserMessages = useRecoilValue(store.collapseLongUserMessages);
+  const collapseLongUserMessages = useRecoilValue(
+    store.collapseLongUserMessages,
+  );
   const smoothStreaming = useSmoothStreaming();
   // The word fade itself indicates streaming, so the trailing block cursor
   // only shows when the fade is unavailable (setting off or reduced motion).
@@ -33,7 +40,9 @@ const TextPart = memo(function TextPart({ text, isCreatedByUser, showCursor }: T
 
   const content: ContentType = useMemo(() => {
     if (!isCreatedByUser) {
-      return <Markdown content={text} isLatestMessage={isLatestMessage} />;
+      return (
+        <CJRouterMessage content={text} isLatestMessage={isLatestMessage} />
+      );
     } else if (enableUserMsgMarkdown) {
       return <MarkdownLite content={text} />;
     } else {
@@ -45,11 +54,11 @@ const TextPart = memo(function TextPart({ text, isCreatedByUser, showCursor }: T
     <CollapsibleText enabled={isCreatedByUser && collapseLongUserMessages}>
       <div
         className={cn(
-          isSubmitting ? 'submitting' : '',
-          showCursorState && !!text.length ? 'result-streaming' : '',
-          'markdown prose message-content dark:prose-invert light w-full break-words',
-          isCreatedByUser && !enableUserMsgMarkdown && 'whitespace-pre-wrap',
-          'text-text-primary',
+          isSubmitting ? "submitting" : "",
+          showCursorState && !!text.length ? "result-streaming" : "",
+          "markdown prose message-content dark:prose-invert light w-full break-words",
+          isCreatedByUser && !enableUserMsgMarkdown && "whitespace-pre-wrap",
+          "text-text-primary",
         )}
       >
         {content}
@@ -57,6 +66,6 @@ const TextPart = memo(function TextPart({ text, isCreatedByUser, showCursor }: T
     </CollapsibleText>
   );
 });
-TextPart.displayName = 'TextPart';
+TextPart.displayName = "TextPart";
 
 export default TextPart;

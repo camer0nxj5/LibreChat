@@ -1,34 +1,36 @@
-import { memo, Suspense, useMemo } from 'react';
-import { useRecoilValue } from 'recoil';
-import { Constants } from 'librechat-data-provider';
-import { Alert, DelayedRender } from '@librechat/client';
-import type { TMessage } from 'librechat-data-provider';
-import type { TMessageContentProps, TDisplayProps } from '~/common';
-import useSmoothStreaming from '~/hooks/Messages/useSmoothStreaming';
-import Error from '~/components/Messages/Content/Error';
-import ToolCallLimitNotice from './ToolCallLimitNotice';
-import CollapsibleText from './Parts/CollapsibleText';
-import { useMessageContext } from '~/Providers';
-import EmptyText from './Parts/EmptyText';
-import MarkdownLite from './MarkdownLite';
-import EditMessage from './EditMessage';
-import Thinking from './Parts/Thinking';
-import { useLocalize } from '~/hooks';
-import Container from './Container';
-import Markdown from './Markdown';
-import { cn } from '~/utils';
-import store from '~/store';
-import CJRouterFooter, { parseCJFooter } from './CJRouterFooter';
+import { memo, Suspense, useMemo } from "react";
+import { useRecoilValue } from "recoil";
+import { Constants } from "librechat-data-provider";
+import { Alert, DelayedRender } from "@librechat/client";
+import type { TMessage } from "librechat-data-provider";
+import type { TMessageContentProps, TDisplayProps } from "~/common";
+import useSmoothStreaming from "~/hooks/Messages/useSmoothStreaming";
+import Error from "~/components/Messages/Content/Error";
+import ToolCallLimitNotice from "./ToolCallLimitNotice";
+import CollapsibleText from "./Parts/CollapsibleText";
+import { CJRouterMessage } from "./CJRouterFooter";
+import { useMessageContext } from "~/Providers";
+import EmptyText from "./Parts/EmptyText";
+import MarkdownLite from "./MarkdownLite";
+import EditMessage from "./EditMessage";
+import Thinking from "./Parts/Thinking";
+import { useLocalize } from "~/hooks";
+import Container from "./Container";
+import { cn } from "~/utils";
+import store from "~/store";
 
-const ERROR_CONNECTION_TEXT = 'Error connecting to server, try refreshing the page.';
+const ERROR_CONNECTION_TEXT =
+  "Error connecting to server, try refreshing the page.";
 const DELAYED_ERROR_TIMEOUT = 5500;
 const UNFINISHED_DELAY = 250;
 
 const parseThinkingContent = (text: string) => {
   const thinkingMatch = text.match(/:::thinking([\s\S]*?):::/);
   return {
-    thinkingContent: thinkingMatch ? thinkingMatch[1].trim() : '',
-    regularContent: thinkingMatch ? text.replace(/:::thinking[\s\S]*?:::/, '').trim() : text,
+    thinkingContent: thinkingMatch ? thinkingMatch[1].trim() : "",
+    regularContent: thinkingMatch
+      ? text.replace(/:::thinking[\s\S]*?:::/, "").trim()
+      : text,
   };
 };
 
@@ -40,7 +42,7 @@ const LoadingFallback = () => (
 
 const ErrorBox = ({
   children,
-  className = '',
+  className = "",
 }: {
   children: React.ReactNode;
   className?: string;
@@ -49,7 +51,7 @@ const ErrorBox = ({
     role="alert"
     aria-live="assertive"
     className={cn(
-      'rounded-xl border border-status-error-border bg-status-error-subtle px-3 py-2 text-sm text-text-secondary',
+      "rounded-xl border border-status-error-border bg-status-error-subtle px-3 py-2 text-sm text-text-secondary",
       className,
     )}
   >
@@ -64,8 +66,12 @@ const ConnectionError = ({ message }: { message?: TMessage }) => {
     <Suspense fallback={<LoadingFallback />}>
       <DelayedRender delay={DELAYED_ERROR_TIMEOUT}>
         <Container message={message}>
-          <Alert variant="error" icon={false} className="mt-2 shadow-sm transition-all">
-            {localize('com_ui_error_connection')}
+          <Alert
+            variant="error"
+            icon={false}
+            className="mt-2 shadow-sm transition-all"
+          >
+            {localize("com_ui_error_connection")}
           </Alert>
         </Container>
       </DelayedRender>
@@ -76,8 +82,8 @@ const ConnectionError = ({ message }: { message?: TMessage }) => {
 export const ErrorMessage = ({
   text,
   message,
-  className = '',
-}: Pick<TDisplayProps, 'text' | 'className'> & { message?: TMessage }) => {
+  className = "",
+}: Pick<TDisplayProps, "text" | "className"> & { message?: TMessage }) => {
   if (text === ERROR_CONNECTION_TEXT) {
     return <ConnectionError message={message} />;
   }
@@ -91,33 +97,34 @@ export const ErrorMessage = ({
   );
 };
 
-const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplayProps) => {
+const DisplayMessage = ({
+  text,
+  isCreatedByUser,
+  message,
+  showCursor,
+}: TDisplayProps) => {
   const { isSubmitting = false, isLatestMessage = false } = useMessageContext();
   const enableUserMsgMarkdown = useRecoilValue(store.enableUserMsgMarkdown);
-  const collapseLongUserMessages = useRecoilValue(store.collapseLongUserMessages);
+  const collapseLongUserMessages = useRecoilValue(
+    store.collapseLongUserMessages,
+  );
   const smoothStreaming = useSmoothStreaming();
 
   // The word fade itself indicates streaming, so the trailing block cursor
   // only shows when the fade is unavailable (setting off or reduced motion).
   const showCursorState = useMemo(
-    () => showCursor === true && isSubmitting && !(smoothStreaming && !isCreatedByUser),
+    () =>
+      showCursor === true &&
+      isSubmitting &&
+      !(smoothStreaming && !isCreatedByUser),
     [showCursor, isSubmitting, smoothStreaming, isCreatedByUser],
   );
 
   const content = useMemo(() => {
     if (!isCreatedByUser) {
-      const cjParts = parseCJFooter(text);
-      if (cjParts) {
-        return (
-          <CJRouterFooter
-            mainText={cjParts.mainText}
-            sourcesText={cjParts.sourcesText}
-            footerText={cjParts.footerText}
-            isLatestMessage={isLatestMessage}
-          />
-        );
-      }
-      return <Markdown content={text} isLatestMessage={isLatestMessage} />;
+      return (
+        <CJRouterMessage content={text} isLatestMessage={isLatestMessage} />
+      );
     }
     if (enableUserMsgMarkdown) {
       return <MarkdownLite content={text} />;
@@ -130,11 +137,11 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
       <CollapsibleText enabled={isCreatedByUser && collapseLongUserMessages}>
         <div
           className={cn(
-            'markdown prose message-content dark:prose-invert light w-full break-words',
-            isSubmitting && 'submitting',
-            showCursorState && text.length > 0 && 'result-streaming',
-            isCreatedByUser && !enableUserMsgMarkdown && 'whitespace-pre-wrap',
-            'text-text-primary',
+            "markdown prose message-content dark:prose-invert light w-full break-words",
+            isSubmitting && "submitting",
+            showCursorState && text.length > 0 && "result-streaming",
+            isCreatedByUser && !enableUserMsgMarkdown && "whitespace-pre-wrap",
+            "text-text-primary",
           )}
         >
           {content}
@@ -157,7 +164,12 @@ export const UnfinishedMessage = ({ message }: { message: TMessage }) => {
     );
   }
 
-  return <ErrorMessage message={message} text={localize('com_ui_response_incomplete')} />;
+  return (
+    <ErrorMessage
+      message={message}
+      text={localize("com_ui_response_incomplete")}
+    />
+  );
 };
 
 const MessageContent = ({
@@ -172,8 +184,14 @@ const MessageContent = ({
   const { message } = props;
   const { messageId } = message;
 
-  const { thinkingContent, regularContent } = useMemo(() => parseThinkingContent(text), [text]);
-  const showRegularCursor = useMemo(() => isLast && isSubmitting, [isLast, isSubmitting]);
+  const { thinkingContent, regularContent } = useMemo(
+    () => parseThinkingContent(text),
+    [text],
+  );
+  const showRegularCursor = useMemo(
+    () => isLast && isSubmitting,
+    [isLast, isSubmitting],
+  );
 
   const unfinishedMessage = useMemo(
     () =>
@@ -212,6 +230,6 @@ const MessageContent = ({
 };
 
 const MemoizedMessageContent = memo(MessageContent);
-MemoizedMessageContent.displayName = 'MessageContent';
+MemoizedMessageContent.displayName = "MessageContent";
 
 export default MemoizedMessageContent;

@@ -46,6 +46,8 @@ const {
 const { getStrategyFunctions } = require('~/server/services/Files/strategies');
 const { logViolation } = require('~/cache');
 const TextStream = require('./TextStream');
+const CJ_ROUTER_STATUS_RE = /\ue000CJ_ROUTER_STATUS:(\{.*?\})\ue001/g;
+const stripCJRouterStatusMarkers = (text) => typeof text === 'string' ? text.replace(CJ_ROUTER_STATUS_RE, '') : text;
 const db = require('~/models');
 
 const omitUnreplayedHistoricalFiles = (messages) =>
@@ -1043,7 +1045,7 @@ class BaseClient {
     let editedSourceContentLength = 0;
 
     if (typeof completion === 'string') {
-      responseMessage.text = completion;
+      responseMessage.text = stripCJRouterStatusMarkers(completion);
     } else if (
       Array.isArray(completion) &&
       (this.clientName === EModelEndpoint.agents ||
@@ -1070,7 +1072,7 @@ class BaseClient {
         }
       }
     } else if (Array.isArray(completion)) {
-      responseMessage.text = completion.join('');
+      responseMessage.text = stripCJRouterStatusMarkers(completion.join(''));
     }
 
     if (Array.isArray(responseMessage.content)) {
