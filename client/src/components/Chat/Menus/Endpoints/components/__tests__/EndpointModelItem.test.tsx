@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import type { Endpoint, SelectedValues } from '~/common';
-import { EndpointModelItem } from '../EndpointModelItem';
+import { EndpointModelItem, endpointModelDisplayName } from '../EndpointModelItem';
 
 const mockHandleSelectModel = jest.fn();
 let mockSelectedValues: SelectedValues;
@@ -55,6 +55,18 @@ const baseEndpoint: Endpoint = {
 describe('EndpointModelItem', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('shows short Fireworks model and router names while preserving other IDs', () => {
+    expect(
+      endpointModelDisplayName('Fireworks', 'accounts/fireworks/models/nemotron-3-ultra-nvfp4'),
+    ).toBe('nemotron-3-ultra-nvfp4');
+    expect(
+      endpointModelDisplayName('Fireworks', 'accounts/fireworks/routers/kimi-k3-fast'),
+    ).toBe('kimi-k3-fast');
+    expect(endpointModelDisplayName('Other', 'accounts/fireworks/models/kimi-k3')).toBe(
+      'accounts/fireworks/models/kimi-k3',
+    );
   });
 
   it('renders checkmark when model and endpoint match with no active spec', () => {

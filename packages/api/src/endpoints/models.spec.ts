@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Time, EModelEndpoint, defaultModels, AuthType } from 'librechat-data-provider';
 import {
   fetchModels,
+  normalizeFetchedModels,
   splitAndTrim,
   getOpenAIModels,
   getGoogleModels,
@@ -80,6 +81,32 @@ beforeEach(() => {
 });
 
 describe('fetchModels', () => {
+  it('deduplicates Fireworks chat models and removes non-chat or unavailable entries', () => {
+    expect(
+      normalizeFetchedModels('Fireworks', [
+        { id: 'accounts/fireworks/models/kimi-k3', supports_chat: true },
+        { id: 'accounts/fireworks/models/kimi-k3', supports_chat: true },
+        { id: 'accounts/fireworks/routers/kimi-k3-fast', supports_chat: true },
+        { id: 'accounts/fireworks/models/qwen3-embedding-8b', supports_chat: true },
+        { id: 'accounts/fireworks/models/qwen3-reranker-8b', supports_chat: true },
+        { id: 'accounts/fireworks/models/minimax-m2p7', supports_chat: true },
+        { id: 'accounts/fireworks/models/not-chat', supports_chat: false },
+      ]),
+    ).toEqual([
+      'accounts/fireworks/models/kimi-k3',
+      'accounts/fireworks/routers/kimi-k3-fast',
+    ]);
+  });
+
+  it('only performs exact deduplication for other providers', () => {
+    expect(
+      normalizeFetchedModels('Other', [
+        { id: 'embedding-model', supports_chat: false },
+        { id: 'embedding-model', supports_chat: false },
+      ]),
+    ).toEqual(['embedding-model']);
+  });
+
   it('fetches models successfully from the API', async () => {
     const models = await fetchModels({
       user: 'user123',

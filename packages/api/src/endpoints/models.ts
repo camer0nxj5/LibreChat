@@ -145,6 +145,44 @@ export function splitAndTrim(input: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
+const FIREWORKS_NON_CHAT_MODEL_PATTERN = /\/(?:embedding|reranker)(?:-|\/)/i;
+const FIREWORKS_UNAVAILABLE_MODELS = new Set([
+  'accounts/fireworks/models/minimax-m2p7',
+  'accounts/fireworks/models/deepseek-v4-pro',
+  'accounts/fireworks/models/qwen3p7-plus',
+]);
+
+/**
+ * Normalizes provider model catalogs before caching or returning them to the UI.
+ * Fireworks currently advertises embedding/reranker entries as chat-capable and
+ * can retain retired serverless IDs in `/models`; neither belongs in a chat picker.
+ */
+export function normalizeFetchedModels(
+  endpointName: string,
+  items: Array<{ id?: string; supports_chat?: boolean }>,
+): string[] {
+  const fireworks = endpointName.trim().toLowerCase() === KnownEndpoints.fireworks;
+  const seen = new Set<string>();
+  const models: string[] = [];
+  for (const item of items) {
+    const id = typeof item?.id === 'string' ? item.id.trim() : '';
+    if (!id || seen.has(id)) {
+      continue;
+    }
+    if (
+      fireworks &&
+      (item.supports_chat === false ||
+        FIREWORKS_NON_CHAT_MODEL_PATTERN.test(id) ||
+        FIREWORKS_UNAVAILABLE_MODELS.has(id))
+    ) {
+      continue;
+    }
+    seen.add(id);
+    models.push(id);
+  }
+  return models;
+}
+
 /**
  * Fetches models from the specified base API path or Azure, based on the provided configuration.
  *
@@ -298,7 +336,7 @@ export async function fetchModels({
         await cache.set(getModelCacheTokenConfigKey(cacheKey), endpointTokenConfig);
       }
     }
-    models = input.data.map((item: { id: string }) => item.id);
+    models = normalizeFetchedModels(name, input.data);
   } catch (error) {
     const logMessage = `Failed to fetch models from ${azure ? 'Azure ' : ''}${name} API`;
     logAxiosError({ message: logMessage, error: error as Error });

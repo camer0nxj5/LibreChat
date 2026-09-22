@@ -28,6 +28,13 @@ interface EndpointModelItemProps {
   setSize?: number;
 }
 
+export function endpointModelDisplayName(endpointValue: string, modelId: string | null): string | null {
+  if (endpointValue.trim().toLowerCase() !== 'fireworks' || !modelId) {
+    return modelId;
+  }
+  return modelId.replace(/^accounts\/fireworks\/(?:models|routers)\//i, '');
+}
+
 function EndpointModelItemComponent({
   modelId,
   endpoint,
@@ -49,7 +56,7 @@ function EndpointModelItemComponent({
 
   const { ref: itemRef, isActive } = useActiveItem<HTMLDivElement>();
 
-  let modelName = modelId;
+  let modelName = endpointModelDisplayName(endpoint.value, modelId);
   const avatarUrl = endpoint?.modelIcons?.[modelId ?? ''] || null;
 
   // Use custom names if available
