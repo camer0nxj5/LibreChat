@@ -230,7 +230,7 @@ export const getDisplayValue = ({
       return endpoint.assistantNames[selectedValues.model];
     }
 
-    return selectedValues.model;
+    return endpointModelDisplayName(endpoint.value, selectedValues.model);
   }
 
   if (selectedValues.endpoint) {
@@ -240,3 +240,10 @@ export const getDisplayValue = ({
 
   return localize('com_ui_select_model');
 };
+
+export function endpointModelDisplayName(endpointValue: string, modelId: string | null): string | null {
+  if (endpointValue.trim().toLowerCase() !== 'fireworks' || !modelId) {
+    return modelId;
+  }
+  return modelId.replace(/^accounts\/fireworks\/(?:models|routers)\//i, '');
+}

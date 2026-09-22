@@ -7,6 +7,7 @@ import { isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider'
 import type { Endpoint } from '~/common';
 import { useModelSelectorContext } from '../ModelSelectorContext';
 import { CustomMenuItem as MenuItem } from '../CustomMenu';
+import { endpointModelDisplayName } from '../utils';
 import useActiveItem from '../useActiveItem';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
@@ -26,13 +27,6 @@ interface EndpointModelItemProps {
    */
   posInSet?: number;
   setSize?: number;
-}
-
-export function endpointModelDisplayName(endpointValue: string, modelId: string | null): string | null {
-  if (endpointValue.trim().toLowerCase() !== 'fireworks' || !modelId) {
-    return modelId;
-  }
-  return modelId.replace(/^accounts\/fireworks\/(?:models|routers)\//i, '');
 }
 
 function EndpointModelItemComponent({

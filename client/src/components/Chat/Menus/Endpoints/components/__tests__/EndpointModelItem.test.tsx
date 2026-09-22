@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import type { Endpoint, SelectedValues } from '~/common';
-import { EndpointModelItem, endpointModelDisplayName } from '../EndpointModelItem';
+import { EndpointModelItem } from '../EndpointModelItem';
+import { endpointModelDisplayName } from '../../utils';
 
 const mockHandleSelectModel = jest.fn();
 let mockSelectedValues: SelectedValues;

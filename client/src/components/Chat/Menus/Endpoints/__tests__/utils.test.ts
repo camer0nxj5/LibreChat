@@ -1,6 +1,6 @@
 import type { useLocalize } from '~/hooks';
 import type { Endpoint } from '~/common';
-import { filterItems } from '../utils';
+import { filterItems, getDisplayValue } from '../utils';
 
 const agentsEndpoint: Endpoint = {
   value: 'agents',
@@ -19,6 +19,23 @@ const disabledAgentsEndpoint: Endpoint = {
 };
 
 describe('model selector utilities', () => {
+  it('shortens the selected Fireworks model in the trigger', () => {
+    const localize = ((key: string) => key) as ReturnType<typeof useLocalize>;
+    expect(
+      getDisplayValue({
+        localize,
+        agentsMap: undefined,
+        modelSpecs: [],
+        selectedValues: {
+          endpoint: 'Fireworks',
+          model: 'accounts/fireworks/models/nemotron-3-ultra-nvfp4',
+          modelSpec: '',
+        },
+        mappedEndpoints: [{ value: 'Fireworks', label: 'Fireworks', icon: null }],
+      }),
+    ).toBe('nemotron-3-ultra-nvfp4');
+  });
+
   it('matches endpoint search aliases', () => {
     const results = filterItems([agentsEndpoint], 'marketplace', undefined, undefined);
     expect(results).toEqual([agentsEndpoint]);
