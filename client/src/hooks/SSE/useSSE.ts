@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { v4 } from 'uuid';
 import { SSE } from 'sse.js';
 import { useStore } from 'jotai';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSetRecoilState } from 'recoil';
 import {
+  QueryKeys,
+  dataService,
   request,
   UsageEvents,
   StepEvents,
@@ -41,6 +44,9 @@ export default function useSSE(
   runIndex = 0,
 ) {
   const jotaiStore = useStore();
+  const queryClient = useQueryClient();
+  const submissionRef = useRef(submission);
+  submissionRef.current = submission;
   const setActiveRunId = useSetRecoilState(store.activeRunFamily(runIndex));
 
   const { token, isAuthenticated } = useAuthContext();
@@ -97,6 +103,10 @@ export default function useSSE(
     }
 
     let { userMessage } = submission;
+    let finalReceived = false;
+    let wasBackgrounded = document.visibilityState !== 'visible';
+    let recoveryInFlight = false;
+    let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
 
     const payloadData = createPayload(submission);
     let { payload } = payloadData;
@@ -109,6 +119,88 @@ export default function useSSE(
       payload: JSON.stringify(payload),
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     });
+
+    const clearRecoveryTimer = () => {
+      if (recoveryTimer != null) {
+        clearTimeout(recoveryTimer);
+        recoveryTimer = null;
+      }
+    };
+
+    const hasPersistedAssistantChild = (messages: TMessage[]) =>
+      messages.some(
+        (message) =>
+          message.isCreatedByUser === false &&
+          message.parentMessageId === userMessage.messageId &&
+          message.isTemporary !== true &&
+          ((message.content?.length ?? 0) > 0 || (message.text?.length ?? 0) > 0),
+      );
+
+    /**
+     * Mobile Safari can suspend the page while the API server continues consuming
+     * and persisting the upstream stream. The legacy SSE transport is not resumable,
+     * so reconcile from durable messages when the page returns to the foreground.
+     */
+    const reconcileBackgroundedStream = async () => {
+      if (finalReceived || recoveryInFlight || submissionRef.current !== submission) {
+        return;
+      }
+      const conversationId =
+        userMessage.conversationId ?? submission.conversation?.conversationId ?? '';
+      if (!conversationId) {
+        return;
+      }
+
+      recoveryInFlight = true;
+      try {
+        const persistedMessages = await dataService.getMessagesByConvoId(conversationId);
+        if (!hasPersistedAssistantChild(persistedMessages)) {
+          recoveryTimer = setTimeout(() => void reconcileBackgroundedStream(), 3000);
+          return;
+        }
+
+        finalReceived = true;
+        clearRecoveryTimer();
+        cancelPendingDeltaFlush();
+        queryClient.setQueryData([QueryKeys.messages, conversationId], persistedMessages);
+        setMessages(persistedMessages);
+        setIsSubmitting(false);
+        setShowStopButton(false);
+        sse.close();
+      } catch (error) {
+        console.warn('Could not reconcile backgrounded legacy stream', error);
+        recoveryTimer = setTimeout(() => void reconcileBackgroundedStream(), 5000);
+      } finally {
+        recoveryInFlight = false;
+      }
+    };
+
+    const handleForeground = () => {
+      if (document.visibilityState !== 'visible') {
+        wasBackgrounded = true;
+        return;
+      }
+      if (!wasBackgrounded || finalReceived) {
+        return;
+      }
+      wasBackgrounded = false;
+      clearRecoveryTimer();
+      void reconcileBackgroundedStream();
+    };
+
+    const handlePageHide = () => {
+      wasBackgrounded = true;
+    };
+
+    const handleOnline = () => {
+      wasBackgrounded = true;
+      handleForeground();
+    };
+
+    document.addEventListener('visibilitychange', handleForeground);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('pageshow', handleForeground);
+    window.addEventListener('online', handleOnline);
 
     sse.addEventListener('attachment', (e: MessageEvent) => {
       try {
@@ -123,6 +215,8 @@ export default function useSSE(
       const data = JSON.parse(e.data);
 
       if (data.final != null) {
+        finalReceived = true;
+        clearRecoveryTimer();
         /** A queued delta flush reading the older streaming copy must never
          * land on top of the server-final write. */
         cancelPendingDeltaFlush();
@@ -221,6 +315,8 @@ export default function useSSE(
     });
 
     sse.addEventListener('cancel', async () => {
+      finalReceived = true;
+      clearRecoveryTimer();
       /** FLUSH (not cancel): the abort below synthesizes the partial response
        * from the cache, so the last queued tokens must land first. */
       flushPendingDeltas();
@@ -285,6 +381,8 @@ export default function useSSE(
       }
 
       console.log('error in server stream.');
+      finalReceived = true;
+      clearRecoveryTimer();
       (startupConfig?.balance?.enabled ?? false) && balanceQuery.refetch();
       resetLive({ ...submission, userMessage });
 
@@ -307,6 +405,12 @@ export default function useSSE(
     sse.stream();
 
     return () => {
+      finalReceived = true;
+      clearRecoveryTimer();
+      document.removeEventListener('visibilitychange', handleForeground);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('pageshow', handleForeground);
+      window.removeEventListener('online', handleOnline);
       const isCancelled = sse.readyState <= 1;
       sse.close();
       if (isCancelled) {
