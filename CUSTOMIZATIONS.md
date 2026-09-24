@@ -105,6 +105,42 @@ Manual validation:
 3. Wait for the server to complete the request and unlock the phone.
 4. Confirm that the completed response appears without Retry or page reload.
 
+## 5. Configurable web-search round limit
+
+Purpose: prevent direct tool-using models from repeatedly broadening web research while still allowing several independent searches to run concurrently.
+
+Files:
+
+- `packages/data-provider/src/config.ts`
+- `packages/data-provider/src/config.spec.ts`
+- `packages/api/src/agents/webSearchRoundLimit.ts`
+- `packages/api/src/agents/webSearchRoundLimit.spec.ts`
+- `packages/api/src/agents/run.ts`
+- `packages/api/src/tools/toolkits/web.ts`
+- `packages/api/src/tools/toolkits/web.spec.ts`
+
+Configuration:
+
+```yaml
+webSearch:
+  maxSearchRoundsPerTurn: 2
+```
+
+Required behavior:
+
+- Count a completed root tool batch containing one or more `web_search` calls as one search round.
+- Treat parallel searches in the same batch as one round.
+- After the configured number of rounds, deny only later `web_search` calls; leave other tools available.
+- Tell the model after each completed search round how many search rounds remain and require a final answer after the last allowed round.
+- Keep the static web-search tool context explicit that independent searches should be issued concurrently.
+- Omission of `maxSearchRoundsPerTurn` preserves unlimited search rounds.
+
+Validation:
+
+```bash
+npx jest packages/api/src/agents/webSearchRoundLimit.spec.ts packages/api/src/tools/toolkits/web.spec.ts packages/data-provider/src/config.spec.ts --runInBand
+```
+
 ## General validation and deployment
 
 ```bash

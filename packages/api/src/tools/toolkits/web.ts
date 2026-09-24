@@ -5,6 +5,8 @@ export function buildWebSearchContext(): string {
   return `# \`${Tools.web_search}\`:
 Use this tool when the user's request calls for it, whether directly, indirectly, or implicitly, or when answering requires information that is current, real-time, or otherwise beyond your own knowledge; for questions you can answer reliably on your own, respond directly without searching. When searching, execute immediately without preface, then provide a brief summary addressing the query directly, then structure your response with clear Markdown formatting (## headers, lists, tables). Cite sources properly, tailor tone to query type, and provide comprehensive details.
 
+When several independent queries are useful, issue them concurrently in the same search round. Converge quickly: after the configured maximum number of web-search rounds, do not search again; answer from the evidence already gathered and briefly identify any unresolved gap.
+
 Use the current date from the dynamic runtime context when recency matters.
 
 **CITATION FORMAT - UNICODE ESCAPE SEQUENCES ONLY:**

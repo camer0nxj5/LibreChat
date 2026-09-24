@@ -1146,6 +1146,13 @@ describe('allowedAddressesSchema', () => {
 });
 
 describe('webSearchSchema', () => {
+  it('accepts a bounded per-turn web-search round limit', () => {
+    expect(webSearchSchema.parse({ maxSearchRoundsPerTurn: 2 })).toMatchObject({
+      maxSearchRoundsPerTurn: 2,
+    });
+    expect(() => webSearchSchema.parse({ maxSearchRoundsPerTurn: 0 })).toThrow();
+    expect(() => webSearchSchema.parse({ maxSearchRoundsPerTurn: 11 })).toThrow();
+  });
   it('accepts Tavily string modes for answer and raw content options', () => {
     const result = webSearchSchema.parse({
       tavilySearchOptions: {

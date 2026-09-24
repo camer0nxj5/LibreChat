@@ -19,6 +19,13 @@ describe('web search context', () => {
     expect(context).toContain('current, real-time, or otherwise beyond your own knowledge');
   });
 
+  it('encourages parallel searches while warning the model to respect the configured cap', () => {
+    const context = buildWebSearchContext();
+
+    expect(context).toContain('issue them concurrently in the same search round');
+    expect(context).toContain('configured maximum number of web-search rounds');
+  });
+
   it('keeps runtime context stable across turns on the same day', () => {
     const context = buildWebSearchDynamicContext('2024-01-02T03:04:05.000Z');
     const secondContext = buildWebSearchDynamicContext('2024-01-02T22:59:59.999Z');

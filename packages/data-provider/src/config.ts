@@ -2361,6 +2361,9 @@ export function normalizeSearxngEngines(engines?: string | string[]): string | u
 
 export const webSearchSchema = z.object({
   allowedAddresses: allowedAddressesSchema,
+  /** Maximum completed web-search batches per root agent run. Parallel calls in
+   * one batch count as one round. Omit to leave search rounds unlimited. */
+  maxSearchRoundsPerTurn: z.number().int().min(1).max(10).optional(),
   serperApiKey: z.string().optional().default('${SERPER_API_KEY}'),
   serperApiKeyPreview: apiKeyPreviewSchema,
   searxngInstanceUrl: z.string().optional().default('${SEARXNG_INSTANCE_URL}'),
