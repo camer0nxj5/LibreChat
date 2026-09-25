@@ -625,6 +625,7 @@ export function getOpenAILLMConfig({
     reasoning_summary,
     reasoning_mode,
     reasoning_context,
+    disable_thinking,
     verbosity,
     web_search,
     promptCache,
@@ -657,6 +658,16 @@ export function getOpenAILLMConfig({
   let reasoningSummary = reasoning_summary;
   let reasoningMode = reasoning_mode;
   let reasoningContext = reasoning_context;
+
+  /** oMLX/Qwen does not interpret OpenAI's reasoning_effort="none" as a
+   *  chat-template instruction. Expose the native Qwen switch without leaking
+   *  the LibreChat-only disable_thinking field into the provider payload. */
+  if (typeof disable_thinking === 'boolean') {
+    modelKwargs.chat_template_kwargs = {
+      enable_thinking: !disable_thinking,
+    };
+    hasModelKwargs = true;
+  }
 
   if (verbosity != null && verbosity !== '' && useOpenRouter) {
     llmConfig.verbosity = verbosity;
@@ -863,6 +874,15 @@ export function getOpenAILLMConfig({
    * (non-canonical base URL), and `reasoningFormat: 'disabled'` (no reasoning
    * payload is sent) keep their existing Chat Completions path.
    */
+  /** A checked native thinking switch wins over both conversation values and
+   *  endpoint defaults. Keep saved UI values intact, but omit them on this call. */
+  if (disable_thinking === true) {
+    reasoningEffort = undefined;
+    reasoningSummary = undefined;
+    reasoningMode = undefined;
+    reasoningContext = undefined;
+  }
+
   const responsesApiOptedOut =
     dropParams != null &&
     (dropParams.includes('reasoning_effort') || dropParams.includes('useResponsesApi'));

@@ -25,6 +25,7 @@ function DynamicSlider({
   labelCode = false,
   descriptionCode = false,
   conversation,
+  className,
 }: DynamicSettingProps) {
   const localize = useLocalize();
   const { preset } = useChatContext();
@@ -168,6 +169,7 @@ function DynamicSlider({
       className={cn(
         'flex flex-col items-center justify-start gap-2',
         columnSpan != null ? `col-span-${columnSpan}` : 'col-span-full',
+        className,
       )}
     >
       <HoverCard openDelay={300}>

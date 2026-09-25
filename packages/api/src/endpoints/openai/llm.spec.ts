@@ -482,6 +482,41 @@ describe('getOpenAILLMConfig', () => {
       expect(result.llmConfig).not.toHaveProperty('reasoning_effort');
     });
 
+    it('should translate disable_thinking into Qwen chat_template_kwargs', () => {
+      const result = getOpenAILLMConfig({
+        apiKey: 'test-api-key',
+        streaming: true,
+        endpoint: 'oMLX',
+        modelOptions: {
+          model: 'Qwen3.6-35B-A3B-4bit',
+          disable_thinking: true,
+          reasoning_effort: ReasoningEffort.high,
+        },
+      });
+
+      expect(result.llmConfig.modelKwargs).toMatchObject({
+        chat_template_kwargs: { enable_thinking: false },
+      });
+      expect(result.llmConfig.modelKwargs).not.toHaveProperty('reasoning_effort');
+      expect(result.llmConfig).not.toHaveProperty('disable_thinking');
+    });
+
+    it('should explicitly enable Qwen thinking when disable_thinking is false', () => {
+      const result = getOpenAILLMConfig({
+        apiKey: 'test-api-key',
+        streaming: true,
+        endpoint: 'oMLX',
+        modelOptions: {
+          model: 'Qwen3.6-35B-A3B-4bit',
+          disable_thinking: false,
+        },
+      });
+
+      expect(result.llmConfig.modelKwargs).toMatchObject({
+        chat_template_kwargs: { enable_thinking: true },
+      });
+    });
+
     it('should support reasoning object passthrough for custom endpoints', () => {
       const result = getOpenAILLMConfig({
         apiKey: 'test-api-key',

@@ -2,6 +2,30 @@
 
 This file is the upgrade manifest for the `cj-custom` branch. Use it when rebasing onto a newer LibreChat release. It records intended behavior, affected files, and validation commands so custom behavior can be reimplemented if upstream changes conflict.
 
+## oMLX native thinking control
+
+The model-parameter panel shows a **Disable Thinking** switch for the direct
+`oMLX` endpoint immediately before the generic reasoning controls. The choice
+persists per endpoint/model with the other parameter-panel preferences.
+
+- Checked sends `chat_template_kwargs.enable_thinking: false`.
+- Unchecked sends `chat_template_kwargs.enable_thinking: true` after the user
+  has selected the control.
+- While checked, Reasoning Effort, Reasoning Summary, Reasoning Mode, and
+  Reasoning Context are disabled and visually dimmed. Their saved values are
+  retained and become available again when thinking is re-enabled.
+- Checked also suppresses those generic reasoning fields from the provider
+  request, so an OpenAI-style setting cannot conflict with Qwen's native chat
+  template switch.
+
+Files:
+
+- `client/src/components/SidePanel/Parameters/Panel.tsx`
+- `client/src/components/SidePanel/Parameters/DynamicSlider.tsx`
+- `packages/data-provider/src/schemas.ts`
+- `packages/api/src/endpoints/openai/llm.ts`
+- `packages/api/src/endpoints/openai/llm.spec.ts`
+
 ## Upgrade workflow
 
 1. Fetch the desired upstream release into the fork's `main` branch.

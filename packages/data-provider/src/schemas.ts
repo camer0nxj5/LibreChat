@@ -1178,6 +1178,9 @@ export const tConversationSchema = z.object({
   /* OpenAI Responses API: reasoning mode (standard/pro) + context */
   reasoning_mode: eReasoningModeSchema.optional().nullable(),
   reasoning_context: eReasoningContextSchema.optional().nullable(),
+  /** Qwen/oMLX chat-template switch. When true, the request builder sends
+   *  chat_template_kwargs.enable_thinking=false. */
+  disable_thinking: z.boolean().optional(),
   /* OpenAI: Verbosity control */
   verbosity: eVerbositySchema.optional().nullable(),
   /* OpenAI: use Responses API */
@@ -1647,6 +1650,7 @@ export const openAIBaseSchema = tConversationSchema.pick({
   reasoning_summary: true,
   reasoning_mode: true,
   reasoning_context: true,
+  disable_thinking: true,
   verbosity: true,
   useResponsesApi: true,
   web_search: true,

@@ -22,6 +22,12 @@ import { componentMapping } from './components';
 import { logger, cn } from '~/utils';
 
 const MODEL_PARAMETER_PREFERENCES = 'librechat-model-parameters:';
+const DISABLED_BY_THINKING_TOGGLE = new Set([
+  'reasoning_effort',
+  'reasoning_summary',
+  'reasoning_mode',
+  'reasoning_context',
+]);
 
 function getModelParameterPreferenceKey(provider: string, model: string) {
   if (!provider || !model) return '';
@@ -76,9 +82,26 @@ export default function Parameters() {
       overriddenEndpointKey,
       model,
     );
-    return modelAwareParams.map(
+    const resolvedParams = modelAwareParams.map(
       (param) => (overriddenParamsMap[param.key] as SettingDefinition) ?? param,
     );
+    if (provider.toLowerCase() === 'omlx') {
+      const disableThinking: SettingDefinition = {
+        key: 'disable_thinking',
+        label: 'Disable Thinking',
+        description:
+          'Turn off Qwen/oMLX thinking with chat_template_kwargs.enable_thinking=false.',
+        type: 'boolean',
+        default: false,
+        component: 'switch',
+        optionType: 'model',
+        showDefault: false,
+        columnSpan: 2,
+      };
+      const reasoningIndex = resolvedParams.findIndex((param) => param.key === 'reasoning_effort');
+      resolvedParams.splice(reasoningIndex >= 0 ? reasoningIndex : resolvedParams.length, 0, disableThinking);
+    }
+    return resolvedParams;
   }, [endpointType, endpointsConfig, model, provider, startupConfig]);
 
   const parameterKeys = useMemo(
@@ -90,6 +113,7 @@ export default function Parameters() {
     [provider, model],
   );
   const preferenceApplicationKey = `${conversation?.conversationId ?? 'new'}:${preferenceKey}`;
+  const thinkingDisabled = conversation?.disable_thinking === true;
 
   /** Apply the last values chosen for this endpoint/model whenever that model is
    *  opened in a different conversation. Invalid or obsolete parameter keys are ignored. */
@@ -247,6 +271,7 @@ export default function Parameters() {
             return null;
           }
           const { key, default: defaultValue, ...rest } = setting;
+          const disabledByThinking = thinkingDisabled && DISABLED_BY_THINKING_TOGGLE.has(key);
 
           if (key === 'region' && bedrockRegions.length) {
             rest.options = bedrockRegions;
@@ -258,6 +283,8 @@ export default function Parameters() {
               settingKey={key}
               defaultValue={defaultValue}
               {...rest}
+              readonly={Boolean(rest.readonly) || disabledByThinking}
+              className={cn(disabledByThinking && 'pointer-events-none opacity-40')}
               setOption={setPersistentOption}
               conversation={conversation}
             />
