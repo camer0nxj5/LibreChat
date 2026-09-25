@@ -156,7 +156,7 @@ Mobile Safari may retain an older Workbox bundle after deployment. If the new cl
 
 LibreChat can use `searchProvider: cj_router` while retaining the normal `web_search` UI, citations, artifacts, concurrent tool-call batches, and `maxSearchRoundsPerTurn` enforcement. The model chooses each query. The provider performs Tavily advanced search (20 results), one advanced extraction batch for the top five unique URLs per query, table-aware chunking, and production-Cohere `rerank-v3.5` selection of the top 15 evidence chunks.
 
-This provider deliberately does not run CJ Router's query planner or subquery planner, KB-card or Qdrant retrieval, source-quality classification, primary-source retries, software-capability repository discovery, extract-miss refetches, or experimental fetch policies. The existing CJ Router chat-completions paths retain their prior behavior.
+This provider deliberately does not run CJ Router's query planner or subquery planner, KB-card or Qdrant retrieval, source-quality classification, primary-source retries, software-capability repository discovery, or experimental fetch policies. If Tavily omits one of the requested top-five extracts, all missing URLs are retried together once. The existing CJ Router chat-completions paths retain their prior behavior.
 
 Custom files:
 
