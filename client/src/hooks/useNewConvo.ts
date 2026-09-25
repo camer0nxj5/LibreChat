@@ -372,7 +372,19 @@ const useNewConvo = (index = 0) => {
         updatedAt: '',
       };
 
-      let preset = _preset;
+      let lastUsedSelection: Partial<TPreset> | undefined;
+      if (!_preset && _template.endpoint == null && !hasModelSelection(_template)) {
+        try {
+          const stored = localStorage.getItem(LocalStorageKeys.LAST_USED_MODEL_SELECTION);
+          lastUsedSelection = stored ? (JSON.parse(stored) as Partial<TPreset>) : undefined;
+        } catch (error) {
+          logger.warn('conversation', 'Unable to restore the last used model selection:', error);
+        }
+      }
+
+      /** A caller-provided selection wins. Otherwise use the model that most
+       * recently submitted a request, rather than whichever old chat was opened last. */
+      let preset = _preset ?? lastUsedSelection;
       const result = getDefaultModelSpec(startupConfig, endpointsConfig, agentsMap);
       const defaultModelSpec = result?.default ?? result?.last ?? result?.softDefault;
       const shouldApplyModelSpec =

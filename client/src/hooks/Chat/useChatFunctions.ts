@@ -8,6 +8,7 @@ import {
   QueryKeys,
   ContentTypes,
   EModelEndpoint,
+  LocalStorageKeys,
   getEndpointField,
   isAgentsEndpoint,
   parseCompactConvo,
@@ -769,6 +770,23 @@ export default function useChatFunctions({
       expectedPredecessorCreatedAt: overrideExpectedPredecessorCreatedAt,
       queuedMessageOrigin: overrideQueuedMessageOrigin,
     };
+
+    /** Opening an old conversation must not redefine the next New Chat model.
+     * Record the selection only when it is actually used for a submission. */
+    const usedSelection = {
+      endpoint: conversation.endpoint,
+      endpointType: conversation.endpointType,
+      model: conversation.model,
+      spec: conversation.spec,
+      agent_id: conversation.agent_id,
+      assistant_id: conversation.assistant_id,
+    };
+    if (usedSelection.endpoint) {
+      localStorage.setItem(
+        LocalStorageKeys.LAST_USED_MODEL_SELECTION,
+        JSON.stringify(usedSelection),
+      );
+    }
 
     if (regenerateShaped) {
       setMessages([...submissionMessages, initialResponse]);

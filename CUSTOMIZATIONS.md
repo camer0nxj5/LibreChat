@@ -2,6 +2,22 @@
 
 This file is the upgrade manifest for the `cj-custom` branch. Use it when rebasing onto a newer LibreChat release. It records intended behavior, affected files, and validation commands so custom behavior can be reimplemented if upstream changes conflict.
 
+## Last-used model for New Chat
+
+LibreChat stores the endpoint/model/spec from the most recently submitted
+request in `lastUsedModelSelection`. A plain **New Chat** restores that exact
+selection when it is still available. Merely opening an older conversation does
+not change the preference. Reopened conversations continue using the model
+stored on that conversation. Explicit templates, presets, project launches, and
+model selections passed by a caller take precedence.
+
+Files:
+
+- `packages/data-provider/src/config.ts`
+- `client/src/hooks/Chat/useChatFunctions.ts`
+- `client/src/hooks/useNewConvo.ts`
+- `client/src/utils/localStorage.ts`
+
 ## oMLX native thinking control
 
 The model-parameter panel shows a **Disable Thinking** switch for the direct
