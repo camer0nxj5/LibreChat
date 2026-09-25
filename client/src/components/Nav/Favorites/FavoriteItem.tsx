@@ -5,6 +5,7 @@ import { EModelEndpoint } from 'librechat-data-provider';
 import type { Agent, TModelSpec, TEndpointsConfig } from 'librechat-data-provider';
 import type { FavoriteModel } from '~/store/favorites';
 import SpecIcon from '~/components/Chat/Menus/Endpoints/components/SpecIcon';
+import { endpointModelDisplayName } from '~/components/Chat/Menus/Endpoints/utils';
 import MinimalIcon from '~/components/Endpoints/MinimalIcon';
 import { useFavorites, useLocalize } from '~/hooks';
 import { renderAgentAvatar } from '~/utils';
@@ -120,7 +121,7 @@ export default function FavoriteItem(props: FavoriteItemProps) {
     name = props.item.label;
     typeLabel = localize('com_ui_model_spec');
   } else {
-    name = props.item.model;
+    name = endpointModelDisplayName(props.item.endpoint, props.item.model) ?? props.item.model;
     typeLabel = localize('com_ui_model');
   }
   const ariaLabel = `${name} (${typeLabel})`;

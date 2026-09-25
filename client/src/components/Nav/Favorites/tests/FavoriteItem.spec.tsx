@@ -90,6 +90,20 @@ describe('FavoriteItem', () => {
       expect(screen.getByTestId('minimal-icon')).toBeInTheDocument();
     });
 
+    it('shortens Fireworks model names in the pinned list', () => {
+      render(
+        <FavoriteItem
+          type="model"
+          item={{
+            endpoint: 'Fireworks',
+            model: 'accounts/fireworks/models/deepseek-v4-flash',
+          }}
+        />,
+      );
+      expect(screen.getByText('deepseek-v4-flash')).toBeInTheDocument();
+      expect(screen.queryByText(/accounts\/fireworks\/models/)).not.toBeInTheDocument();
+    });
+
     it('has aria-label formatted as "<model> (com_ui_model)"', () => {
       render(<FavoriteItem type="model" item={baseModel} />);
       expect(screen.getByRole('button', { name: 'gpt-5 (com_ui_model)' })).toBeInTheDocument();

@@ -201,3 +201,9 @@ Files:
 - `/Users/cameron/Desktop/Programming/LibreChat-Config/librechat.yaml`
 
 The authoritative YAML keeps the CJ URL and key available but sets the default provider stack to Tavily basic. `handleTools.js` selects CJ Router only when `ephemeralAgent.advanced_search` is true.
+# Default Search, search controls, Fireworks labels, and model parameter preferences
+
+- Basic Search defaults to enabled when a conversation has no stored search choice. Basic and Advanced Search are normalized as mutually exclusive; selecting either atomically disables the other.
+- Search round limits use compact up/down controls bounded to 1–5 rounds.
+- Fireworks IDs are shortened in the model picker, selected-model trigger, and pinned favorites list while retaining the full ID for API requests.
+- Parameter-panel values are stored in browser local storage by endpoint and model and restored when that model is used in another conversation. Reset clears the saved preferences for that model.

@@ -1,7 +1,16 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { TooltipAnchor, DropdownPopup, PinIcon, VectorIcon } from '@librechat/client';
-import { Brain, Globe, ScrollText, Settings, Settings2, TerminalSquareIcon } from 'lucide-react';
+import {
+  Brain,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  ScrollText,
+  Settings,
+  Settings2,
+  TerminalSquareIcon,
+} from 'lucide-react';
 import {
   AuthType,
   Permissions,
@@ -129,31 +138,47 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     }));
   }, [advancedSearch]);
 
-  const roundLimitSelect = (
+  const roundLimitStepper = (
     value: unknown,
     setValue: ((value: boolean | string | number) => void) | undefined,
     label: string,
-  ) => (
-    <label className="flex items-center gap-1 text-xs text-text-secondary">
-      <span>Limit</span>
-      <select
-        aria-label={label}
-        value={typeof value === 'number' ? value : 2}
+  ) => {
+    const current = typeof value === 'number' && value >= 1 && value <= 5 ? value : 2;
+    const update = (next: number) => setValue?.(Math.max(1, Math.min(5, next)));
+    return (
+      <div
+        className="flex items-center gap-1.5 text-xs text-text-secondary"
         onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          e.stopPropagation();
-          setValue?.(Number(e.target.value));
-        }}
-        className="rounded border border-border-light bg-surface-primary px-1 py-0.5 text-text-primary"
       >
-        {[1, 2, 3, 4, 5].map((limit) => (
-          <option key={limit} value={limit}>
-            {limit}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+        <span>Limit</span>
+        <div className="flex h-8 overflow-hidden rounded-md border border-border-light bg-surface-primary text-text-primary">
+          <output className="flex w-7 items-center justify-center font-medium" aria-live="polite">
+            {current}
+          </output>
+          <div className="flex w-6 flex-col border-l border-border-light">
+            <button
+              type="button"
+              aria-label={`Increase ${label}`}
+              disabled={current >= 5}
+              onClick={() => update(current + 1)}
+              className="flex h-1/2 items-center justify-center hover:bg-surface-secondary disabled:opacity-30"
+            >
+              <ChevronUp className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              aria-label={`Decrease ${label}`}
+              disabled={current <= 1}
+              onClick={() => update(current - 1)}
+              className="flex h-1/2 items-center justify-center border-t border-border-light hover:bg-surface-secondary disabled:opacity-30"
+            >
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const handleCodeInterpreterToggle = useCallback(() => {
     const newValue = !codeInterpreter?.toggleState;
@@ -249,7 +274,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
             <span>{localize('com_ui_web_search')}</span>
           </div>
           <div className="flex items-center gap-1">
-            {roundLimitSelect(
+            {roundLimitStepper(
               webSearchLimit?.toggleState,
               webSearchLimit?.setToggleState,
               'Regular search round limit',
@@ -306,7 +331,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
             <span>Advanced Search</span>
           </div>
           <div className="flex items-center gap-1">
-            {roundLimitSelect(
+            {roundLimitStepper(
               advancedSearchLimit?.toggleState,
               advancedSearchLimit?.setToggleState,
               'Advanced search round limit',

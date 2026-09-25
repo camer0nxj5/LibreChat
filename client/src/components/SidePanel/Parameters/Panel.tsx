@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import keyBy from 'lodash/keyBy';
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@librechat/client';
@@ -21,12 +21,20 @@ import { useSetIndexOptions, useLocalize } from '~/hooks';
 import { componentMapping } from './components';
 import { logger, cn } from '~/utils';
 
+const MODEL_PARAMETER_PREFERENCES = 'librechat-model-parameters:';
+
+function getModelParameterPreferenceKey(provider: string, model: string) {
+  if (!provider || !model) return '';
+  return `${MODEL_PARAMETER_PREFERENCES}${encodeURIComponent(provider)}:${encodeURIComponent(model)}`;
+}
+
 export default function Parameters() {
   const localize = useLocalize();
   const { data: startupConfig } = useGetStartupConfig();
   const { conversation, setConversation } = useChatContext();
   const { announcePolite } = useLiveAnnouncer();
   const { setOption } = useSetIndexOptions();
+  const appliedPreferenceRef = useRef('');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [preset, setPreset] = useState<TPreset | null>(null);
@@ -72,6 +80,60 @@ export default function Parameters() {
       (param) => (overriddenParamsMap[param.key] as SettingDefinition) ?? param,
     );
   }, [endpointType, endpointsConfig, model, provider, startupConfig]);
+
+  const parameterKeys = useMemo(
+    () => new Set(parameters.filter(Boolean).map((setting) => setting.key)),
+    [parameters],
+  );
+  const preferenceKey = useMemo(
+    () => getModelParameterPreferenceKey(provider, model),
+    [provider, model],
+  );
+  const preferenceApplicationKey = `${conversation?.conversationId ?? 'new'}:${preferenceKey}`;
+
+  /** Apply the last values chosen for this endpoint/model whenever that model is
+   *  opened in a different conversation. Invalid or obsolete parameter keys are ignored. */
+  useEffect(() => {
+    if (!preferenceKey || appliedPreferenceRef.current === preferenceApplicationKey) return;
+    appliedPreferenceRef.current = preferenceApplicationKey;
+    try {
+      const parsed = JSON.parse(localStorage.getItem(preferenceKey) ?? '{}') as Record<
+        string,
+        unknown
+      >;
+      setConversation((prev) => {
+        if (!prev) return prev;
+        let changed = false;
+        const next = { ...prev };
+        for (const [key, value] of Object.entries(parsed)) {
+          if (!parameterKeys.has(key) || Object.is(next[key], value)) continue;
+          next[key] = value;
+          changed = true;
+        }
+        return changed ? (tConvoUpdateSchema.parse(next) as typeof prev) : prev;
+      });
+    } catch (error) {
+      logger.warn('parameters', 'Unable to restore model parameter preferences:', error);
+    }
+  }, [parameterKeys, preferenceApplicationKey, preferenceKey, setConversation]);
+
+  const setPersistentOption = useCallback(
+    (param: string) => (newValue: unknown) => {
+      setOption(param)(newValue);
+      if (!preferenceKey || !parameterKeys.has(param)) return;
+      try {
+        const current = JSON.parse(localStorage.getItem(preferenceKey) ?? '{}') as Record<
+          string,
+          unknown
+        >;
+        current[param] = newValue;
+        localStorage.setItem(preferenceKey, JSON.stringify(current));
+      } catch (error) {
+        logger.warn('parameters', 'Unable to save model parameter preferences:', error);
+      }
+    },
+    [parameterKeys, preferenceKey, setOption],
+  );
 
   useEffect(() => {
     if (!parameters) {
@@ -132,6 +194,7 @@ export default function Parameters() {
   }, [parameters, setConversation]);
 
   const resetParameters = useCallback(() => {
+    if (preferenceKey) localStorage.removeItem(preferenceKey);
     setConversation((prev) => {
       if (!prev) {
         return prev;
@@ -158,7 +221,7 @@ export default function Parameters() {
     announcePolite({ message: localize('com_ui_model_parameters_reset'), isStatus: true });
 
     setResetCount((count) => count + 1);
-  }, [setConversation, announcePolite, localize]);
+  }, [preferenceKey, setConversation, announcePolite, localize]);
 
   const openDialog = useCallback(() => {
     const newPreset = tConvoUpdateSchema.parse({
@@ -195,7 +258,7 @@ export default function Parameters() {
               settingKey={key}
               defaultValue={defaultValue}
               {...rest}
-              setOption={setOption}
+              setOption={setPersistentOption}
               conversation={conversation}
             />
           );
