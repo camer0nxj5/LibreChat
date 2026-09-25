@@ -313,6 +313,7 @@ export interface IConversation extends Document {
   reasoning_summary?: string;
   reasoning_mode?: string;
   reasoning_context?: string;
+  disable_thinking?: boolean;
   verbosity?: string;
   useResponsesApi?: boolean;
   web_search?: boolean;

@@ -23,6 +23,9 @@ Files:
 - `client/src/components/SidePanel/Parameters/Panel.tsx`
 - `client/src/components/SidePanel/Parameters/DynamicSlider.tsx`
 - `packages/data-provider/src/schemas.ts`
+- `packages/data-schemas/src/types/convo.ts`
+- `packages/data-schemas/src/schema/defaults.ts`
+- `packages/data-schemas/src/schema/preset.ts`
 - `packages/api/src/endpoints/openai/llm.ts`
 - `packages/api/src/endpoints/openai/llm.spec.ts`
 

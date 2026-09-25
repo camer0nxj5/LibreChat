@@ -207,6 +207,9 @@ export const conversationPreset: {
   reasoning_context: {
     type: StringConstructor;
   };
+  disable_thinking: {
+    type: BooleanConstructor;
+  };
   /** Verbosity control */
   verbosity: {
     type: StringConstructor;
@@ -397,6 +400,9 @@ export const conversationPreset: {
   },
   reasoning_context: {
     type: String,
+  },
+  disable_thinking: {
+    type: Boolean,
   },
   /** Verbosity control */
   verbosity: {
