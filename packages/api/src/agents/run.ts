@@ -2334,7 +2334,7 @@ export async function createRun({
    * untouched; `additionalContexts` accumulate independently of injected messages.
    */
   hooks = hooks ?? new HookRegistry();
-  const ephemeralSearch = req.body?.ephemeralAgent as
+  const ephemeralSearch = requestBody?.ephemeralAgent as
     | {
         advanced_search?: boolean;
         web_search_max_rounds?: number;
