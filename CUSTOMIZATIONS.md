@@ -250,3 +250,15 @@ The authoritative YAML keeps the CJ URL and key available but sets the default p
 - Search round limits use compact up/down controls bounded to 1–5 rounds.
 - Fireworks IDs are shortened in the model picker, selected-model trigger, and pinned favorites list while retaining the full ID for API requests.
 - Parameter-panel values are stored in browser local storage by endpoint and model and restored when that model is used in another conversation. Reset clears the saved preferences for that model.
+
+### Synchronous model-parameter restore for new chats (2026-09-25)
+
+New-chat construction restores the saved endpoint/model parameter record before the conversation enters Recoil. This closes a render-effect race where the last-used model was selected immediately but a quickly submitted first prompt could omit settings such as `disable_thinking`. Explicit template or preset parameters retain precedence. The parameter-panel effect remains as a fallback for existing conversations and model changes.
+
+Files:
+- `client/src/utils/modelParameterPreferences.ts`
+- `client/src/utils/modelParameterPreferences.spec.ts`
+- `client/src/hooks/useNewConvo.ts`
+- `client/src/components/SidePanel/Parameters/Panel.tsx`
+
+Validation: the production Docker frontend build passed; a loaded Qwen3.6 smoke request with `enable_thinking=false` emitted no reasoning and issued its first search tool-call delta in 1.925 seconds.

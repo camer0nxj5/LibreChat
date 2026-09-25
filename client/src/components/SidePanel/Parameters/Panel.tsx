@@ -19,20 +19,14 @@ import { useChatContext, useLiveAnnouncer } from '~/Providers';
 import { SaveAsPresetDialog } from '~/components/Endpoints';
 import { useSetIndexOptions, useLocalize } from '~/hooks';
 import { componentMapping } from './components';
-import { logger, cn } from '~/utils';
+import { getModelParameterPreferenceKey, logger, cn } from '~/utils';
 
-const MODEL_PARAMETER_PREFERENCES = 'librechat-model-parameters:';
 const DISABLED_BY_THINKING_TOGGLE = new Set([
   'reasoning_effort',
   'reasoning_summary',
   'reasoning_mode',
   'reasoning_context',
 ]);
-
-function getModelParameterPreferenceKey(provider: string, model: string) {
-  if (!provider || !model) return '';
-  return `${MODEL_PARAMETER_PREFERENCES}${encodeURIComponent(provider)}:${encodeURIComponent(model)}`;
-}
 
 export default function Parameters() {
   const localize = useLocalize();

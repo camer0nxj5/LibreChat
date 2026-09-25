@@ -32,6 +32,7 @@ import {
   getModelSpecPreset,
   hasModelSelection,
   buildDefaultConvo,
+  applyModelParameterPreferences,
   requestChatFocus,
   renewNewConversationDraftToken,
   getNewConversationDraftId,
@@ -229,6 +230,10 @@ const useNewConvo = (index = 0) => {
 
           const models = modelsConfig?.[defaultEndpoint] ?? [];
           const defaultParamsEndpoint = getDefaultParamsEndpoint(endpointsConfig, defaultEndpoint);
+          const explicitModelParameters = {
+            ...conversation,
+            ...(activePreset ?? {}),
+          } as Partial<TConversation>;
           conversation = buildDefaultConvo({
             conversation,
             lastConversationSetup: activePreset as TConversation,
@@ -236,6 +241,9 @@ const useNewConvo = (index = 0) => {
             models,
             defaultParamsEndpoint,
           });
+          if (conversation.conversationId === Constants.NEW_CONVO) {
+            conversation = applyModelParameterPreferences(conversation, explicitModelParameters);
+          }
 
           if (hasExplicitChatProjectId) {
             conversation.chatProjectId = explicitChatProjectId ?? null;
