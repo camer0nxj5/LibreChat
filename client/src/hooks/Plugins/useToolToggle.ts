@@ -9,7 +9,7 @@ import useLocalStorage from '~/hooks/useLocalStorageAlt';
 import { setTimestamp } from '~/utils/timestamps';
 import { ephemeralAgentByConvoId } from '~/store';
 
-type ToolValue = boolean | string;
+type ToolValue = boolean | string | number;
 
 interface UseToolToggleOptions {
   conversationId?: string | null;

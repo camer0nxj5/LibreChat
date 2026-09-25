@@ -19,6 +19,9 @@ interface BadgeRowContextType {
   skills: ReturnType<typeof useToolToggle>;
   memory: ReturnType<typeof useToolToggle>;
   webSearch: ReturnType<typeof useToolToggle>;
+  advancedSearch: ReturnType<typeof useToolToggle>;
+  webSearchLimit: ReturnType<typeof useToolToggle>;
+  advancedSearchLimit: ReturnType<typeof useToolToggle>;
   artifacts: ReturnType<typeof useToolToggle>;
   fileSearch: ReturnType<typeof useToolToggle>;
   codeInterpreter: ReturnType<typeof useToolToggle>;
@@ -100,6 +103,9 @@ export default function BadgeRowProvider({
 
       const codeToggleKey = `${LocalStorageKeys.LAST_CODE_TOGGLE_}${storageSuffix}`;
       const webSearchToggleKey = `${LocalStorageKeys.LAST_WEB_SEARCH_TOGGLE_}${storageSuffix}`;
+      const advancedSearchToggleKey = `${LocalStorageKeys.LAST_ADVANCED_SEARCH_TOGGLE_}${storageSuffix}`;
+      const webSearchLimitKey = `${LocalStorageKeys.LAST_WEB_SEARCH_LIMIT_}${storageSuffix}`;
+      const advancedSearchLimitKey = `${LocalStorageKeys.LAST_ADVANCED_SEARCH_LIMIT_}${storageSuffix}`;
       const fileSearchToggleKey = `${LocalStorageKeys.LAST_FILE_SEARCH_TOGGLE_}${storageSuffix}`;
       const artifactsToggleKey = `${LocalStorageKeys.LAST_ARTIFACTS_TOGGLE_}${storageSuffix}`;
       const skillsToggleKey = `${LocalStorageKeys.LAST_SKILLS_TOGGLE_}${storageSuffix}`;
@@ -107,12 +113,15 @@ export default function BadgeRowProvider({
 
       const codeToggleValue = getTimestampedValue(codeToggleKey);
       const webSearchToggleValue = getTimestampedValue(webSearchToggleKey);
+      const advancedSearchToggleValue = getTimestampedValue(advancedSearchToggleKey);
+      const webSearchLimitValue = getTimestampedValue(webSearchLimitKey);
+      const advancedSearchLimitValue = getTimestampedValue(advancedSearchLimitKey);
       const fileSearchToggleValue = getTimestampedValue(fileSearchToggleKey);
       const artifactsToggleValue = getTimestampedValue(artifactsToggleKey);
       const skillsToggleValue = getTimestampedValue(skillsToggleKey);
       const memoryToggleValue = getTimestampedValue(memoryToggleKey);
 
-      const initialValues: Record<string, boolean | string> = {};
+      const initialValues: Record<string, boolean | string | number> = {};
 
       if (codeToggleValue !== null) {
         try {
@@ -127,6 +136,26 @@ export default function BadgeRowProvider({
           initialValues[Tools.web_search] = JSON.parse(webSearchToggleValue);
         } catch (e) {
           console.error('Failed to parse web search toggle value:', e);
+        }
+      }
+
+      if (advancedSearchToggleValue !== null) {
+        try {
+          initialValues.advanced_search = JSON.parse(advancedSearchToggleValue);
+        } catch (e) {
+          console.error('Failed to parse advanced search toggle value:', e);
+        }
+      }
+
+      for (const [value, keyName] of [
+        [webSearchLimitValue, 'web_search_max_rounds'],
+        [advancedSearchLimitValue, 'advanced_search_max_rounds'],
+      ] as const) {
+        if (value === null) continue;
+        try {
+          initialValues[keyName] = JSON.parse(value);
+        } catch (e) {
+          console.error(`Failed to parse ${keyName}:`, e);
         }
       }
 
@@ -236,6 +265,30 @@ export default function BadgeRowProvider({
     },
   });
 
+  const advancedSearch = useToolToggle({
+    conversationId,
+    storageContextKey,
+    toolKey: 'advanced_search',
+    localStorageKey: LocalStorageKeys.LAST_ADVANCED_SEARCH_TOGGLE_,
+    isAuthenticated: true,
+  });
+
+  const webSearchLimit = useToolToggle({
+    conversationId,
+    storageContextKey,
+    toolKey: 'web_search_max_rounds',
+    localStorageKey: LocalStorageKeys.LAST_WEB_SEARCH_LIMIT_,
+    isAuthenticated: true,
+  });
+
+  const advancedSearchLimit = useToolToggle({
+    conversationId,
+    storageContextKey,
+    toolKey: 'advanced_search_max_rounds',
+    localStorageKey: LocalStorageKeys.LAST_ADVANCED_SEARCH_LIMIT_,
+    isAuthenticated: true,
+  });
+
   /** FileSearch hook */
   const fileSearch = useToolToggle({
     conversationId,
@@ -284,6 +337,9 @@ export default function BadgeRowProvider({
     skills,
     memory,
     webSearch,
+    advancedSearch,
+    webSearchLimit,
+    advancedSearchLimit,
     artifacts,
     fileSearch,
     agentsConfig,

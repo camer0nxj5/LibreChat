@@ -19,16 +19,25 @@ function WebSearch() {
   if (!context) {
     return null;
   }
-  const { webSearch: webSearchData, searchApiKeyForm } = context;
-  const { toggleState: webSearch, debouncedChange, isPinned, authData } = webSearchData;
+  const { webSearch: webSearchData, advancedSearch, searchApiKeyForm } = context;
+  const { toggleState: webSearch, isPinned, authData } = webSearchData;
   const { badgeTriggerRef } = searchApiKeyForm;
+
+  const setRegularSearch = ({ value }: { value: boolean | string | number }) => {
+    webSearchData.setEphemeralAgent((prev) => ({
+      ...(prev || {}),
+      web_search: value === true,
+      advanced_search: false,
+    }));
+    if (value === true) advancedSearch.setToggleState(false);
+  };
 
   return (
     (isPinned || (webSearch && authData?.authenticated)) && (
       <CheckboxButton
         ref={badgeTriggerRef}
         checked={webSearch}
-        setValue={debouncedChange}
+        setValue={setRegularSearch}
         label={localize('com_ui_search')}
         isCheckedClassName={badgeAccents.blue}
         icon={<Globe className="icon-md" aria-hidden="true" />}

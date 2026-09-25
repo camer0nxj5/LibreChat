@@ -450,7 +450,8 @@ const loadTools = async ({
       };
       continue;
     } else if (tool === Tools.web_search) {
-      if (webSearch?.searchProvider === 'cj_router') {
+      const useAdvancedSearch = options.req?.body?.ephemeralAgent?.advanced_search === true;
+      if (useAdvancedSearch || webSearch?.searchProvider === 'cj_router') {
         const resolveConfigValue = (value) => {
           const match = typeof value === 'string' && value.trim().match(/^\$\{([^}]+)\}$/);
           return match ? process.env[match[1]] : value;

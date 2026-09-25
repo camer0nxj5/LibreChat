@@ -168,3 +168,36 @@ Custom files:
 - `LibreChat-Config/librechat.yaml`
 
 The backend endpoint is `POST /v1/librechat/web-search` in `LiteLLM-Config-CJ-Router/cj_router/router.py`. It records component timings and selected evidence in both `librechat-cj-web-search.jsonl` and the central web benchmark ledger.
+
+## 6. Separate basic and advanced search controls
+
+Purpose: keep LibreChat's normal Search control fast while retaining the CJ advanced evidence pipeline as an explicit user choice.
+
+Required behavior:
+
+- **Search** uses Tavily basic search (five results per query), Tavily basic extraction, and Cohere reranking.
+- **Advanced Search** uses the existing CJ Router provider: Tavily advanced search, advanced extraction of the top five URLs per query, missing-extract retry, table-aware chunking, and production Cohere top-15 reranking.
+- Search and Advanced Search are mutually exclusive composer controls.
+- Each mode has its own per-chat search-round limit, selectable from 1–5 in the Tools menu and defaulting to 2.
+- Independent searches emitted in one tool batch count as one round.
+- The selected limit is carried in `ephemeralAgent` and overrides the configured default for that request.
+- The ordinary `web_search` tool name, citations, source cards, and round-limit hooks are shared by both providers.
+
+Files:
+
+- `client/src/Providers/BadgeRowContext.tsx`
+- `client/src/components/Chat/Input/AdvancedSearch.tsx`
+- `client/src/components/Chat/Input/BadgeRow.tsx`
+- `client/src/components/Chat/Input/ToolsDropdown.tsx`
+- `client/src/components/Chat/Input/WebSearch.tsx`
+- `client/src/hooks/Plugins/useToolToggle.ts`
+- `client/src/utils/timestamps.ts`
+- `packages/data-provider/src/config.ts`
+- `packages/data-provider/src/types.ts`
+- `packages/api/src/agents/load.ts`
+- `packages/api/src/agents/added.ts`
+- `packages/api/src/agents/run.ts`
+- `api/app/clients/tools/util/handleTools.js`
+- `/Users/cameron/Desktop/Programming/LibreChat-Config/librechat.yaml`
+
+The authoritative YAML keeps the CJ URL and key available but sets the default provider stack to Tavily basic. `handleTools.js` selects CJ Router only when `ephemeralAgent.advanced_search` is true.

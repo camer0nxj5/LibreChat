@@ -80,6 +80,9 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     skills,
     memory,
     webSearch,
+    advancedSearch,
+    webSearchLimit,
+    advancedSearchLimit,
     artifacts,
     fileSearch,
     mcpServerManager,
@@ -95,6 +98,8 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     authData: webSearchAuthData,
   } = webSearch ?? {};
   const { isPinned: isCodePinned, setIsPinned: setIsCodePinned } = codeInterpreter ?? {};
+  const { isPinned: isAdvancedSearchPinned, setIsPinned: setIsAdvancedSearchPinned } =
+    advancedSearch ?? {};
   const { isPinned: isFileSearchPinned, setIsPinned: setIsFileSearchPinned } = fileSearch ?? {};
   const { isPinned: isArtifactsPinned, setIsPinned: setIsArtifactsPinned } = artifacts ?? {};
   const { isPinned: isSkillsPinned, setIsPinned: setIsSkillsPinned } = skills ?? {};
@@ -108,8 +113,47 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
 
   const handleWebSearchToggle = useCallback(() => {
     const newValue = !webSearch?.toggleState;
-    webSearch?.debouncedChange({ value: newValue });
+    webSearch?.setEphemeralAgent((prev) => ({
+      ...(prev || {}),
+      web_search: newValue,
+      advanced_search: false,
+    }));
   }, [webSearch]);
+
+  const handleAdvancedSearchToggle = useCallback(() => {
+    const newValue = !advancedSearch?.toggleState;
+    advancedSearch?.setEphemeralAgent((prev) => ({
+      ...(prev || {}),
+      advanced_search: newValue,
+      web_search: false,
+    }));
+  }, [advancedSearch]);
+
+  const roundLimitSelect = (
+    value: unknown,
+    setValue: ((value: boolean | string | number) => void) | undefined,
+    label: string,
+  ) => (
+    <label className="flex items-center gap-1 text-xs text-text-secondary">
+      <span>Limit</span>
+      <select
+        aria-label={label}
+        value={typeof value === 'number' ? value : 2}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          e.stopPropagation();
+          setValue?.(Number(e.target.value));
+        }}
+        className="rounded border border-border-light bg-surface-primary px-1 py-0.5 text-text-primary"
+      >
+        {[1, 2, 3, 4, 5].map((limit) => (
+          <option key={limit} value={limit}>
+            {limit}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 
   const handleCodeInterpreterToggle = useCallback(() => {
     const newValue = !codeInterpreter?.toggleState;
@@ -205,6 +249,11 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
             <span>{localize('com_ui_web_search')}</span>
           </div>
           <div className="flex items-center gap-1">
+            {roundLimitSelect(
+              webSearchLimit?.toggleState,
+              webSearchLimit?.setToggleState,
+              'Regular search round limit',
+            )}
             {showWebSearchSettings && (
               <button
                 type="button"
@@ -240,6 +289,43 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
             >
               <div className="h-4 w-4">
                 <PinIcon unpin={isSearchPinned} />
+              </div>
+            </button>
+          </div>
+        </div>
+      ),
+    });
+
+    dropdownItems.push({
+      onClick: handleAdvancedSearchToggle,
+      hideOnClick: false,
+      render: (props) => (
+        <div {...props} data-testid="tools-menu-advanced-search">
+          <div className="flex items-center gap-2">
+            <Globe className="icon-md text-blue-500" aria-hidden="true" />
+            <span>Advanced Search</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {roundLimitSelect(
+              advancedSearchLimit?.toggleState,
+              advancedSearchLimit?.setToggleState,
+              'Advanced search round limit',
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAdvancedSearchPinned?.(!isAdvancedSearchPinned);
+              }}
+              className={cn(
+                'rounded p-1 transition-all duration-200',
+                'hover:bg-surface-secondary hover:shadow-sm',
+                !isAdvancedSearchPinned && 'text-text-secondary hover:text-text-primary',
+              )}
+              aria-label={isAdvancedSearchPinned ? 'Unpin' : 'Pin'}
+            >
+              <div className="h-4 w-4">
+                <PinIcon unpin={isAdvancedSearchPinned} />
               </div>
             </button>
           </div>

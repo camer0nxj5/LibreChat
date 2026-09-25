@@ -115,6 +115,9 @@ export async function loadAddedAgent(
       execute_code?: boolean;
       file_search?: boolean;
       web_search?: boolean;
+      advanced_search?: boolean;
+      web_search_max_rounds?: number;
+      advanced_search_max_rounds?: number;
       artifacts?: unknown;
       memory?: boolean;
     };
@@ -133,6 +136,9 @@ export async function loadAddedAgent(
         execute_code?: boolean;
         file_search?: boolean;
         web_search?: boolean;
+        advanced_search?: boolean;
+        web_search_max_rounds?: number;
+        advanced_search_max_rounds?: number;
         artifacts?: unknown;
         memory?: boolean;
         ask_user_question?: boolean;
@@ -222,7 +228,11 @@ export async function loadAddedAgent(
   if (ephemeralAgent?.file_search === true || modelSpec?.fileSearch === true) {
     tools.push(Tools.file_search);
   }
-  if (ephemeralAgent?.web_search === true || modelSpec?.webSearch === true) {
+  if (
+    ephemeralAgent?.web_search === true ||
+    ephemeralAgent?.advanced_search === true ||
+    modelSpec?.webSearch === true
+  ) {
     tools.push(Tools.web_search);
   }
   if (ephemeralAgent?.memory === true || modelSpec?.memory === true) {

@@ -118,6 +118,11 @@ export type TEndpointOption = Pick<
 export type TEphemeralAgent = {
   mcp?: string[];
   web_search?: boolean;
+  /** Use the CJ Router advanced Tavily/extract/Cohere implementation for web_search. */
+  advanced_search?: boolean;
+  /** Per-chat search-round limits selected in the composer UI. */
+  web_search_max_rounds?: number;
+  advanced_search_max_rounds?: number;
   file_search?: boolean;
   execute_code?: boolean;
   artifacts?: string;

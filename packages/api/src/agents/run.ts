@@ -2334,7 +2334,23 @@ export async function createRun({
    * untouched; `additionalContexts` accumulate independently of injected messages.
    */
   hooks = hooks ?? new HookRegistry();
-  const maxSearchRounds = appConfig?.webSearch?.maxSearchRoundsPerTurn;
+  const ephemeralSearch = req.body?.ephemeralAgent as
+    | {
+        advanced_search?: boolean;
+        web_search_max_rounds?: number;
+        advanced_search_max_rounds?: number;
+      }
+    | undefined;
+  const requestedSearchRounds = ephemeralSearch?.advanced_search
+    ? ephemeralSearch.advanced_search_max_rounds
+    : ephemeralSearch?.web_search_max_rounds;
+  const maxSearchRounds =
+    typeof requestedSearchRounds === 'number' &&
+    Number.isInteger(requestedSearchRounds) &&
+    requestedSearchRounds >= 1 &&
+    requestedSearchRounds <= 5
+      ? requestedSearchRounds
+      : appConfig?.webSearch?.maxSearchRoundsPerTurn;
   if (typeof maxSearchRounds === 'number') {
     const searchRoundLimit = createWebSearchRoundLimitHooks(maxSearchRounds);
     hooks.register('PreToolUse', {
