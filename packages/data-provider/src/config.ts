@@ -2322,6 +2322,7 @@ export enum SearchProviders {
   SEARXNG = 'searxng',
   TAVILY = 'tavily',
   KEENABLE = 'keenable',
+  CJ_ROUTER = 'cj_router',
 }
 
 export enum ScraperProviders {
@@ -2364,6 +2365,9 @@ export const webSearchSchema = z.object({
   /** Maximum completed web-search batches per root agent run. Parallel calls in
    * one batch count as one round. Omit to leave search rounds unlimited. */
   maxSearchRoundsPerTurn: z.number().int().min(1).max(10).optional(),
+  cjRouterSearchUrl: z.string().optional().default('${CJ_ROUTER_SEARCH_URL}'),
+  cjRouterApiKey: z.string().optional().default('${CJ_ROUTER_SEARCH_API_KEY}'),
+  cjRouterSearchTimeout: z.number().int().positive().max(120000).optional(),
   serperApiKey: z.string().optional().default('${SERPER_API_KEY}'),
   serperApiKeyPreview: apiKeyPreviewSchema,
   searxngInstanceUrl: z.string().optional().default('${SEARXNG_INSTANCE_URL}'),

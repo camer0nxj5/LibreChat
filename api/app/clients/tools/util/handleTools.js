@@ -23,6 +23,7 @@ const {
   ASK_USER_QUESTION_TOOL_NAME,
   resolveWebSearchSSRFAgents,
   buildWebSearchDynamicContext,
+  createCJRouterSearchTool,
   codeExecutionAuthHeaders,
   resolveCodeExecutionContext,
 } = require('@librechat/api');
@@ -449,6 +450,30 @@ const loadTools = async ({
       };
       continue;
     } else if (tool === Tools.web_search) {
+      if (webSearch?.searchProvider === 'cj_router') {
+        const resolveConfigValue = (value) => {
+          const match = typeof value === 'string' && value.trim().match(/^\$\{([^}]+)\}$/);
+          return match ? process.env[match[1]] : value;
+        };
+        const apiUrl = resolveConfigValue(webSearch.cjRouterSearchUrl);
+        const apiKey = resolveConfigValue(webSearch.cjRouterApiKey);
+        if (!apiUrl) {
+          logger.warn('[handleTools] Skipping CJ Router web search because its URL is missing.');
+          continue;
+        }
+        const { onSearchResults } = options?.[Tools.web_search] ?? {};
+        requestedTools[tool] = async () => {
+          toolContextMap[tool] = buildWebSearchContext();
+          dynamicToolContextMap[tool] = buildWebSearchDynamicContext(options.req?.turnStartedAt);
+          return createCJRouterSearchTool({
+            apiUrl,
+            apiKey,
+            timeoutMs: webSearch.cjRouterSearchTimeout,
+            onSearchResults,
+          });
+        };
+        continue;
+      }
       const result = await loadWebSearchAuth({
         userId: user,
         loadAuthValues,

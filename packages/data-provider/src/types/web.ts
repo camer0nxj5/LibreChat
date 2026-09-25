@@ -12,7 +12,7 @@ export enum DATE_RANGE {
   PAST_YEAR = 'y',
 }
 
-export type SearchProvider = 'serper' | 'searxng' | 'tavily' | 'keenable';
+export type SearchProvider = 'serper' | 'searxng' | 'tavily' | 'keenable' | 'cj_router';
 export type ScraperProvider = 'firecrawl' | 'serper' | 'tavily' | 'keenable';
 export type RerankerType = 'infinity' | 'jina' | 'cohere' | 'none';
 
@@ -73,6 +73,9 @@ export interface Source {
 
 export interface SearchConfig {
   searchProvider?: SearchProvider;
+  cjRouterSearchUrl?: string;
+  cjRouterApiKey?: string;
+  cjRouterSearchTimeout?: number;
   serperApiKey?: string;
   searxngInstanceUrl?: string;
   searxngApiKey?: string;

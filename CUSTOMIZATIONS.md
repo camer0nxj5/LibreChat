@@ -151,3 +151,20 @@ cd ~/Desktop/Programming/LibreChat
 ```
 
 Mobile Safari may retain an older Workbox bundle after deployment. If the new client behavior is not visible, clear Safari website data to remove the old service worker and cached assets.
+
+## CJ Router first-class web-search provider
+
+LibreChat can use `searchProvider: cj_router` while retaining the normal `web_search` UI, citations, artifacts, concurrent tool-call batches, and `maxSearchRoundsPerTurn` enforcement. The model chooses each query. The provider performs Tavily advanced search (20 results), one advanced extraction batch for the top five unique URLs per query, table-aware chunking, and production-Cohere `rerank-v3.5` selection of the top 15 evidence chunks.
+
+This provider deliberately does not run CJ Router's query planner or subquery planner, KB-card or Qdrant retrieval, source-quality classification, primary-source retries, software-capability repository discovery, extract-miss refetches, or experimental fetch policies. The existing CJ Router chat-completions paths retain their prior behavior.
+
+Custom files:
+
+- `packages/api/src/tools/cjRouterWebSearch.ts`
+- `packages/api/src/index.ts`
+- `packages/data-provider/src/config.ts`
+- `packages/data-provider/src/types/web.ts`
+- `api/app/clients/tools/util/handleTools.js`
+- `LibreChat-Config/librechat.yaml`
+
+The backend endpoint is `POST /v1/librechat/web-search` in `LiteLLM-Config-CJ-Router/cj_router/router.py`. It records component timings and selected evidence in both `librechat-cj-web-search.jsonl` and the central web benchmark ledger.
