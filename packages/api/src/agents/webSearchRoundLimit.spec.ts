@@ -1,5 +1,8 @@
 import type { PostToolBatchHookInput, PreToolUseHookInput } from '@librechat/agents';
-import { createWebSearchRoundLimitHooks } from './webSearchRoundLimit';
+import {
+  createWebSearchCallLimitHooks,
+  createWebSearchRoundLimitHooks,
+} from './webSearchRoundLimit';
 
 const signal = new AbortController().signal;
 
@@ -52,6 +55,24 @@ describe('web-search round limit', () => {
     const hooks = createWebSearchRoundLimitHooks(1);
     await hooks.postToolBatch(batch(['web_search'], 'child'), signal);
     await hooks.postToolBatch(batch(['calculator']), signal);
+    await expect(hooks.preToolUse(pre(), signal)).resolves.toEqual({});
+  });
+});
+
+describe('web-search call limit', () => {
+  it('allows two calls and denies the third even when calls share a batch', async () => {
+    const hooks = createWebSearchCallLimitHooks(2);
+    await expect(hooks.preToolUse(pre(), signal)).resolves.toEqual({});
+    await expect(hooks.preToolUse(pre(), signal)).resolves.toEqual({});
+    await expect(hooks.preToolUse(pre(), signal)).resolves.toEqual({
+      decision: 'deny',
+      reason: expect.stringContaining('limit of 2 web searches'),
+    });
+  });
+
+  it('does not count other tools', async () => {
+    const hooks = createWebSearchCallLimitHooks(1);
+    await expect(hooks.preToolUse(pre('calculator'), signal)).resolves.toEqual({});
     await expect(hooks.preToolUse(pre(), signal)).resolves.toEqual({});
   });
 });

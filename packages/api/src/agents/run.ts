@@ -118,7 +118,10 @@ import { getAgentCheckpointer } from '~/agents/checkpointer';
 import { getPluginHookSource } from '~/agents/hooks/source';
 import { getOpenAIConfig } from '~/endpoints/openai/config';
 import { createStepBudgetHook } from '~/agents/stepBudget';
-import { createWebSearchRoundLimitHooks } from '~/agents/webSearchRoundLimit';
+import {
+  createWebSearchCallLimitHooks,
+  createWebSearchRoundLimitHooks,
+} from '~/agents/webSearchRoundLimit';
 import { buildHITLRunWiring } from '~/agents/hitl/runtime';
 import { buildLangfuseConfig } from '~/langfuse/config';
 import { applyTestRunHook } from '~/agents/testHook';
@@ -2340,6 +2343,18 @@ export async function createRun({
     });
     hooks.register('PostToolBatch', {
       hooks: [searchRoundLimit.postToolBatch],
+      internal: true,
+    });
+  }
+  const maxSearchCalls = appConfig?.webSearch?.maxSearchCallsPerTurn;
+  if (typeof maxSearchCalls === 'number') {
+    const searchCallLimit = createWebSearchCallLimitHooks(maxSearchCalls);
+    hooks.register('PreToolUse', {
+      hooks: [searchCallLimit.preToolUse],
+      internal: true,
+    });
+    hooks.register('PostToolBatch', {
+      hooks: [searchCallLimit.postToolBatch],
       internal: true,
     });
   }

@@ -2365,6 +2365,8 @@ export const webSearchSchema = z.object({
   /** Maximum completed web-search batches per root agent run. Parallel calls in
    * one batch count as one round. Omit to leave search rounds unlimited. */
   maxSearchRoundsPerTurn: z.number().int().min(1).max(10).optional(),
+  /** Maximum web_search tool invocations per root-agent turn. */
+  maxSearchCallsPerTurn: z.number().int().min(1).max(10).optional(),
   cjRouterSearchUrl: z.string().optional().default('${CJ_ROUTER_SEARCH_URL}'),
   cjRouterApiKey: z.string().optional().default('${CJ_ROUTER_SEARCH_API_KEY}'),
   cjRouterSearchTimeout: z.number().int().positive().max(120000).optional(),

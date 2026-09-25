@@ -154,7 +154,7 @@ Mobile Safari may retain an older Workbox bundle after deployment. If the new cl
 
 ## CJ Router first-class web-search provider
 
-LibreChat can use `searchProvider: cj_router` while retaining the normal `web_search` UI, citations, artifacts, concurrent tool-call batches, and `maxSearchRoundsPerTurn` enforcement. The model chooses each query. The provider performs Tavily advanced search (20 results), one advanced extraction batch for the top five unique URLs per query, table-aware chunking, and production-Cohere `rerank-v3.5` selection of the top 15 evidence chunks.
+LibreChat can use `searchProvider: cj_router` while retaining the normal `web_search` UI, citations, and artifacts. The tool accepts an unrestricted `queries` array, runs those queries concurrently, merges their evidence, and returns one globally reranked top-15 set. `maxSearchCallsPerTurn: 2` limits the root model to two tool invocations per user turn. The provider performs Tavily advanced search (20 results per query), one advanced extraction batch for the top five unique URLs per query, table-aware chunking, and production-Cohere `rerank-v3.5` selection of the top 15 evidence chunks.
 
 This provider deliberately does not run CJ Router's query planner or subquery planner, KB-card or Qdrant retrieval, source-quality classification, primary-source retries, software-capability repository discovery, or experimental fetch policies. If Tavily omits one of the requested top-five extracts, all missing URLs are retried together once. The existing CJ Router chat-completions paths retain their prior behavior.
 

@@ -31,7 +31,7 @@ type CJRouterSearchConfig = SearchCallbacks & {
 
 export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnType<typeof tool> {
   return tool(
-    async (input: { query: string; intent?: string }, runnableConfig?: RunnableConfig) => {
+    async (input: { queries: string[]; intent?: string }, runnableConfig?: RunnableConfig) => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), config.timeoutMs ?? 120_000);
       try {
@@ -41,7 +41,7 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
             'Content-Type': 'application/json',
             ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
           },
-          body: JSON.stringify({ query: input.query }),
+          body: JSON.stringify({ queries: input.queries }),
           signal: controller.signal,
         });
         const payload = (await response.json()) as CJSearchResponse;
@@ -83,7 +83,7 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
           content || 'No relevant web results were returned.',
           {
             [Constants.WEB_SEARCH]: data,
-            outcome: `Returned ${organic.length} reranked web evidence items for: ${input.query}`,
+            outcome: `Returned ${organic.length} globally reranked web evidence items for: ${input.queries.join(' | ')}`,
           },
         ];
       } catch (error) {
@@ -101,14 +101,19 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
     {
       name: 'web_search',
       description:
-        'Search the current web. You may issue multiple independent web_search calls in the same tool batch when distinct queries would improve coverage; those calls run concurrently. Limit yourself to at most two search rounds.',
+        'Search the current web. Put every independently useful query for this search into the queries array; they run concurrently and are merged into one globally reranked evidence set. You may invoke web_search at most twice total in one user turn.',
       schema: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'The exact web search query to run.' },
+          queries: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 1,
+            description: 'All web queries to run concurrently in this search invocation.',
+          },
           intent: { type: 'string', description: 'Brief reason this search is needed.' },
         },
-        required: ['query'],
+        required: ['queries'],
       },
       responseFormat: Constants.CONTENT_AND_ARTIFACT,
     },
