@@ -266,3 +266,8 @@ Validation: the production Docker frontend build passed; a loaded Qwen3.6 smoke 
 ### Soft-default native thinking preservation (2026-09-25)
 
 `client/src/hooks/useNewConvo.ts` reapplies an explicit `disable_thinking` value from a model-spec preset after endpoint normalization. This is required for a clean/private session using the Qwen soft-default spec: the model was selected correctly, but the first request could otherwise omit `chat_template_kwargs.enable_thinking: false`. Per-model browser preferences still apply afterward, and an explicit unchecked value remains able to enable thinking.
+
+### 2026-09-25: preserve Disable Thinking in last-used model and default basic Search
+
+- `client/src/hooks/Chat/useChatFunctions.ts` now includes `disable_thinking` in `LAST_USED_MODEL_SELECTION`. A new chat that restores the last submitted endpoint/model therefore also restores the native oMLX Disable Thinking value instead of dropping it.
+- `client/src/Providers/BadgeRowContext.tsx` enables basic `web_search` whenever Advanced Search is not selected, overriding stale browser state that previously left both search modes off in a new chat. Advanced Search remains mutually exclusive and disables basic Search.

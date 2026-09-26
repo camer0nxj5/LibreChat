@@ -780,6 +780,7 @@ export default function useChatFunctions({
       spec: conversation.spec,
       agent_id: conversation.agent_id,
       assistant_id: conversation.assistant_id,
+      disable_thinking: conversation.disable_thinking,
     };
     if (usedSelection.endpoint) {
       localStorage.setItem(

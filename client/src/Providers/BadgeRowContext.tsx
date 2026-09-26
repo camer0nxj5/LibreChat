@@ -191,16 +191,14 @@ export default function BadgeRowProvider({
         }
       }
 
-      /** Search is available by default. Preserve an explicit stored choice, while
-       *  normalizing legacy state that had both modes enabled. Advanced wins when
-       *  it was explicitly selected; otherwise basic Search is the default. */
+      /** Search is active by default in every new chat. Advanced wins when it was
+       *  explicitly selected; otherwise basic Search is enabled, including when a
+       *  stale browser preference says it was previously off. */
       if (initialValues.advanced_search === true) {
         initialValues[Tools.web_search] = false;
       } else {
         initialValues.advanced_search = false;
-        if (initialValues[Tools.web_search] === undefined) {
-          initialValues[Tools.web_search] = true;
-        }
+        initialValues[Tools.web_search] = true;
       }
       initialValues.web_search_max_rounds ??= 2;
       initialValues.advanced_search_max_rounds ??= 2;
