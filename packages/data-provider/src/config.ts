@@ -674,6 +674,7 @@ export const baseEndpointSchema = z.object({
   headers: z.record(z.string()).optional(),
   titlePrompt: z.string().optional(),
   titleModel: z.string().optional(),
+  titleMaxTokens: z.number().int().min(1).max(256).optional(),
   titleConvo: z.boolean().optional(),
   titleMethod: z
     .union([z.literal('completion'), z.literal('functions'), z.literal('structured')])

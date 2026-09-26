@@ -59,9 +59,17 @@ force. This prevents the auxiliary title decode from making oMLX force either
 the initial prompt or a post-tool evidence packet onto its decode-fairness
 chunked-prefill path.
 
-File:
+Title output is capped through the shared agent title path `titleMaxTokens` endpoint setting; the active global value is 24 tokens. The active
+`librechat.yaml` sets the global title endpoint to the dedicated `oMLX 7B Titles`
+custom endpoint, which calls `Qwen2.5-Coder-7B-Instruct-4bit` on the 32 GB
+server. This keeps title work off the 64 GB response model and prevents runaway
+local title generations from occupying inference capacity for the next prompt.
+
+Files:
 
 - api/server/controllers/agents/request.js
+- api/server/controllers/agents/client.js
+- external config: `/Users/cameron/Desktop/Programming/LibreChat-Config/librechat.yaml`
 
 Validation:
 

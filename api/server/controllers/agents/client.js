@@ -6021,6 +6021,13 @@ class AgentClient extends BaseClient {
       delete clientOptions.modelKwargs.max_output_tokens;
     }
 
+    /** Conversation titles should remain short. Without an explicit cap, local
+     *  models can continue generating analysis or prose for hundreds of tokens,
+     *  consuming the same inference capacity as the next user request. */
+    if (endpointConfig?.titleMaxTokens != null) {
+      clientOptions.maxTokens = endpointConfig.titleMaxTokens;
+    }
+
     /** `omitTitleOptions` drops the Anthropic `clientOptions` carrier (thinking,
      *  streaming, etc.), which would also drop its `defaultHeaders` — preserve the
      *  original `clientOptions` object so gateway/reverse-proxy metadata still
