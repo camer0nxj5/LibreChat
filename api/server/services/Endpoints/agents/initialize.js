@@ -439,6 +439,17 @@ const initializeClient = async ({
       runSignal,
       executionContext,
     ) => {
+      /** New-chat title generation is intentionally deferred until the model
+       *  has committed to its first tool batch. Starting it with the initial
+       *  provider request makes the title decode contend with that request's
+       *  prefill on local Metal engines. The request controller installs this
+       *  one-shot callback only for an eligible first turn. Do not await it:
+       *  tool execution and title generation should overlap. */
+      if (typeof req._deferredAgentTitleStart === 'function') {
+        const startDeferredTitle = req._deferredAgentTitleStart;
+        delete req._deferredAgentTitleStart;
+        startDeferredTitle();
+      }
       const ctx = runFileBindings.getContext(agentId, executionContext) ?? {};
       logger.debug(`[ON_TOOL_EXECUTE] ctx found: ${!!ctx.userMCPAuthMap}, agent: ${ctx.agent?.id}`);
       logger.debug(`[ON_TOOL_EXECUTE] toolRegistry size: ${ctx.toolRegistry?.size ?? 'undefined'}`);

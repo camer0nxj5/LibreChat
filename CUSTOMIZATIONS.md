@@ -45,6 +45,36 @@ Files:
 - `packages/api/src/endpoints/openai/llm.ts`
 - `packages/api/src/endpoints/openai/llm.spec.ts`
 
+## Deferred new-chat title generation
+
+Immediate title generation must not compete with the user's first local-model
+request. For an eligible new conversation using immediate title timing:
+
+- The request controller registers a one-shot title-start callback.
+- The first ON_TOOL_EXECUTE tool-loading event consumes that callback and
+  starts title generation asynchronously, without blocking tool execution.
+- If the model never calls a tool, title generation starts only after the
+  response completes.
+- Existing abort, replacement, title-event, persistence, and client-disposal
+  behavior remains in force.
+
+This prevents an auxiliary title decode from making oMLX force the main prompt
+onto its decode-fairness chunked-prefill path.
+
+Files:
+
+- api/server/controllers/agents/request.js
+- api/server/services/Endpoints/agents/initialize.js
+
+Validation:
+
+1. In a new direct-oMLX chat with Search enabled, confirm no title-model request
+   reaches oMLX before the main request emits its first tool call.
+2. Confirm the title begins after ON_TOOL_EXECUTE and the searches are not
+   delayed while waiting for it.
+3. In a new chat that uses no tool, confirm a title is still generated after
+   the final answer.
+
 ## Upgrade workflow
 
 1. Fetch the desired upstream release into the fork's `main` branch.

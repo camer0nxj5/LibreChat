@@ -2199,6 +2199,39 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
       }
       const titleEligible =
         addTitle && parentMessageId === Constants.NO_PARENT && isNewConvo && !req.body?.isTemporary;
+      /** Start immediate-mode titles only after the first tool batch begins.
+       *  This keeps the auxiliary title decode from forcing the user's initial
+       *  local-model prefill onto oMLX's contended/chunked path. If the model
+       *  never calls a tool, the fallback below starts the title after the
+       *  response completes. */
+      const startDeferredImmediateTitle = () => {
+        if (
+          !titleEligible ||
+          titleTiming !== 'immediate' ||
+          immediateTitlePromise != null ||
+          titleAbortController.signal.aborted
+        ) {
+          return;
+        }
+        immediateTitlePromise = addTitle(req, {
+          text: text || getAttachmentTitleText(req.body.files),
+          conversationId,
+          client,
+          immediate: true,
+          convoReady,
+          signal: titleAbortController.signal,
+          discardSignal: titleDiscardController.signal,
+          onTitleGenerated: emitTitleEvent,
+        }).catch((err) => {
+          logger.error(
+            '[ResumableAgentController] Error in deferred immediate title generation',
+            err,
+          );
+        });
+      };
+      if (titleEligible && titleTiming === 'immediate') {
+        req._deferredAgentTitleStart = startDeferredImmediateTitle;
+      }
       const emitTitleEvent = ({ conversationId: titleConversationId, title }) => {
         titleEventPromise = (async () => {
           if (!acceptsTitleEvents || titleAbortController.signal.aborted) {
@@ -2622,22 +2655,13 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           sendGenerationStarted();
         }
 
-        if (titleEligible && titleTiming === 'immediate') {
-          immediateTitlePromise = addTitle(req, {
-            text: text || getAttachmentTitleText(req.body.files),
-            conversationId,
-            client,
-            immediate: true,
-            convoReady,
-            signal: titleAbortController.signal,
-            discardSignal: titleDiscardController.signal,
-            onTitleGenerated: emitTitleEvent,
-          }).catch((err) => {
-            logger.error('[ResumableAgentController] Error in immediate title generation', err);
-          });
-        }
-
         const response = await sendPromise;
+        /** No tool batch ran, so the tool-execution hook did not consume the
+         *  callback. Generate the title now, after the answer is complete. */
+        if (req._deferredAgentTitleStart === startDeferredImmediateTitle) {
+          delete req._deferredAgentTitleStart;
+          startDeferredImmediateTitle();
+        }
 
         // HITL: the turn paused for human review (see AgentClient.handleRunInterrupt).
         // The job is already `requires_action` with the pending action persisted and
