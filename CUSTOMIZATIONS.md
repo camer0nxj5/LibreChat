@@ -48,30 +48,27 @@ Files:
 ## Deferred new-chat title generation
 
 Immediate title generation must not compete with the user's first local-model
-request. For an eligible new conversation using immediate title timing:
+request. For an eligible new conversation using immediate title timing, the
+request controller starts title generation asynchronously only after
+sendMessage has returned the fully synthesized first answer. This applies both
+to direct answers and to answers produced after tool loops.
 
-- The request controller registers a one-shot title-start callback.
-- The first ON_TOOL_EXECUTE tool-loading event consumes that callback and
-  starts title generation asynchronously, without blocking tool execution.
-- If the model never calls a tool, title generation starts only after the
-  response completes.
-- Existing abort, replacement, title-event, persistence, and client-disposal
-  behavior remains in force.
+The title does not block response persistence or delivery. Existing abort,
+replacement, title-event, persistence, and client-disposal behavior remains in
+force. This prevents the auxiliary title decode from making oMLX force either
+the initial prompt or a post-tool evidence packet onto its decode-fairness
+chunked-prefill path.
 
-This prevents an auxiliary title decode from making oMLX force the main prompt
-onto its decode-fairness chunked-prefill path.
-
-Files:
+File:
 
 - api/server/controllers/agents/request.js
-- api/server/services/Endpoints/agents/initialize.js
 
 Validation:
 
 1. In a new direct-oMLX chat with Search enabled, confirm no title-model request
-   reaches oMLX before the main request emits its first tool call.
-2. Confirm the title begins after ON_TOOL_EXECUTE and the searches are not
-   delayed while waiting for it.
+   reaches oMLX during the initial tool decision, searches, or final synthesis.
+2. Confirm title generation begins after the first answer is synthesized and
+   does not delay displaying that answer.
 3. In a new chat that uses no tool, confirm a title is still generated after
    the final answer.
 

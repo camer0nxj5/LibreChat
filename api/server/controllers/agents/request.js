@@ -2199,11 +2199,11 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
       }
       const titleEligible =
         addTitle && parentMessageId === Constants.NO_PARENT && isNewConvo && !req.body?.isTemporary;
-      /** Start immediate-mode titles only after the first tool batch begins.
-       *  This keeps the auxiliary title decode from forcing the user's initial
-       *  local-model prefill onto oMLX's contended/chunked path. If the model
-       *  never calls a tool, the fallback below starts the title after the
-       *  response completes. */
+      /** Start immediate-mode titles only after the first answer's model
+       *  synthesis completes. This prevents the auxiliary title decode from
+       *  contending with either the initial tool decision or post-tool evidence
+       *  prefill/synthesis. The title remains asynchronous and does not delay
+       *  response persistence or delivery. */
       const startDeferredImmediateTitle = () => {
         if (
           !titleEligible ||
@@ -2229,9 +2229,6 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           );
         });
       };
-      if (titleEligible && titleTiming === 'immediate') {
-        req._deferredAgentTitleStart = startDeferredImmediateTitle;
-      }
       const emitTitleEvent = ({ conversationId: titleConversationId, title }) => {
         titleEventPromise = (async () => {
           if (!acceptsTitleEvents || titleAbortController.signal.aborted) {
@@ -2656,12 +2653,9 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         }
 
         const response = await sendPromise;
-        /** No tool batch ran, so the tool-execution hook did not consume the
-         *  callback. Generate the title now, after the answer is complete. */
-        if (req._deferredAgentTitleStart === startDeferredImmediateTitle) {
-          delete req._deferredAgentTitleStart;
-          startDeferredImmediateTitle();
-        }
+        /** The first answer is fully synthesized. Title generation may now run
+         *  without competing with user-visible model work. */
+        startDeferredImmediateTitle();
 
         // HITL: the turn paused for human review (see AgentClient.handleRunInterrupt).
         // The job is already `requires_action` with the pending action persisted and
