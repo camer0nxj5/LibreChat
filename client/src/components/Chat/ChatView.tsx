@@ -11,6 +11,7 @@ import {
   useScrollbarGutterSeed,
   useAddedResponse,
   useResumeOnLoad,
+  useForegroundConversationSync,
   useAdaptiveSSE,
   useChatHelpers,
   useQueueDrain,
@@ -98,6 +99,11 @@ function ChatView({ index = 0, project }: { index?: number; project?: TChatProje
   const activeSubagentThread = activeConversation?.subagentThread;
 
   useAdaptiveSSE(rootSubmission, chatHelpers, false, index);
+
+  // Re-read durable messages after a suspended mobile browser returns. This sits
+  // above the transport choice so legacy SSE, resumable agents, background tools,
+  // local endpoints, and cloud endpoints all use the same recovery path.
+  useForegroundConversationSync(conversationId, isSubmitting);
 
   // Auto-resume if navigating back to conversation with active job.
   // Wait for messages to load AND the warm-cache background revalidation to

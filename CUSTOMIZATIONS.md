@@ -159,13 +159,16 @@ Validation:
 npx jest packages/api/src/tools/toolkits/web.spec.ts --runInBand
 ```
 
-## 4. Mobile recovery for direct legacy SSE streams
+## 4. Mobile recovery for every response transport
 
-Purpose: recover direct endpoint responses when iOS Safari suspends the page while locked. The LibreChat server may finish and persist the answer even though the browser misses the remaining stream.
+Purpose: recover responses when iOS Safari suspends the page while locked. The LibreChat server may finish and persist the answer even though the browser misses the remaining stream. Recovery must cover direct legacy SSE, resumable agents, content-parts responses, background tools, local endpoints, and cloud endpoints.
 
-File:
+Files:
 
 - `client/src/hooks/SSE/useSSE.ts`
+- `client/src/hooks/SSE/useForegroundConversationSync.ts`
+- `client/src/hooks/SSE/index.ts`
+- `client/src/components/Chat/ChatView.tsx`
 
 Required behavior:
 
@@ -174,7 +177,11 @@ Required behavior:
 - If the server has persisted an assistant child for the submitted user message, replace stale client state with authoritative messages and clear the submitting state.
 - If generation is still running, poll briefly until the completed child is persisted.
 - Stop reconciliation immediately when the normal final event arrives or the hook unmounts.
-- Do not interfere with the separate resumable SSE path used by durable agent/background runs.
+- Mount a conversation-level synchronizer above the adaptive transport choice so every response path receives the same durable-state recovery.
+- On `visibilitychange`, `pageshow`, or `online`, invalidate and refetch durable messages, conversation metadata, resumable stream status, and active-job state.
+- Continue bounded polling while the client still considers the request active. This covers returning to the page before the server has persisted its final answer.
+- Keep the direct legacy reconciliation as a fast transport-local path; the conversation-level synchronizer is the common fallback.
+- Refetch through React Query rather than rewriting message shapes so legacy `text` responses and agent `content[]` responses retain their native rendering behavior.
 
 Manual validation:
 
@@ -182,6 +189,8 @@ Manual validation:
 2. Lock the phone before the first token.
 3. Wait for the server to complete the request and unlock the phone.
 4. Confirm that the completed response appears without Retry or page reload.
+5. Repeat with a Fireworks agent response containing thinking, parallel web-search calls, and a final `content[]` text part.
+6. Repeat with the phone restored before generation finishes; confirm durable polling displays the later final response.
 
 ## 5. Configurable web-search round limit
 
