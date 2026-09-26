@@ -262,3 +262,7 @@ Files:
 - `client/src/components/SidePanel/Parameters/Panel.tsx`
 
 Validation: the production Docker frontend build passed; a loaded Qwen3.6 smoke request with `enable_thinking=false` emitted no reasoning and issued its first search tool-call delta in 1.925 seconds.
+
+### Soft-default native thinking preservation (2026-09-25)
+
+`client/src/hooks/useNewConvo.ts` reapplies an explicit `disable_thinking` value from a model-spec preset after endpoint normalization. This is required for a clean/private session using the Qwen soft-default spec: the model was selected correctly, but the first request could otherwise omit `chat_template_kwargs.enable_thinking: false`. Per-model browser preferences still apply afterward, and an explicit unchecked value remains able to enable thinking.

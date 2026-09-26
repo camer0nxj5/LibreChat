@@ -241,6 +241,13 @@ const useNewConvo = (index = 0) => {
             models,
             defaultParamsEndpoint,
           });
+          /** Custom endpoint normalization can discard newly-added model-spec
+           * fields even when the preset schema accepts them. Reapply the
+           * explicit native thinking switch before browser preferences so the
+           * first request from a soft-default spec uses the displayed value. */
+          if (typeof activePreset?.disable_thinking === "boolean") {
+            conversation.disable_thinking = activePreset.disable_thinking;
+          }
           if (conversation.conversationId === Constants.NEW_CONVO) {
             conversation = applyModelParameterPreferences(conversation, explicitModelParameters);
           }
