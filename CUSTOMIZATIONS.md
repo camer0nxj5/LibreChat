@@ -315,3 +315,19 @@ Validation: the production Docker frontend build passed; a loaded Qwen3.6 smoke 
 
 - `client/src/hooks/Chat/useChatFunctions.ts` now includes `disable_thinking` in `LAST_USED_MODEL_SELECTION`. A new chat that restores the last submitted endpoint/model therefore also restores the native oMLX Disable Thinking value instead of dropping it.
 - `client/src/Providers/BadgeRowContext.tsx` enables basic `web_search` whenever Advanced Search is not selected, overriding stale browser state that previously left both search modes off in a new chat. Advanced Search remains mutually exclusive and disables basic Search.
+
+### 2026-09-26: pin KB answer cards ahead of Advanced Search
+
+The CJ Router Advanced Search tool now checks the answer-card database whenever the model invokes web search. Relevant cards are returned first and are never submitted to Cohere, so reranking cannot remove them.
+
+The first search is cancelled when every implicated card is classified as full coverage. LibreChat retains the returned card IDs for the lifetime of that tool turn. If the model invokes search again and the gate finds only cards that were already returned, the repeated request overrides the earlier full-coverage decision: web search proceeds and the same cards remain pinned above the 15 Cohere-ranked web results. A newly implicated full-coverage card may still cancel a later search.
+
+LibreChat sends `intent`, `search_round`, and `previous_card_ids` to `POST /v1/librechat/web-search`. The endpoint returns a `kb_cards` audit object and writes a `librechat_kb_card_gate` event with the coverage decision and component timings.
+
+Files:
+
+- `packages/api/src/tools/cjRouterWebSearch.ts`
+- `LiteLLM-Config-CJ-Router/cj_router/router.py`
+- `LiteLLM-Config-CJ-Router/cj_router/test_sources.py`
+
+Validation: all 24 router unit tests and the LibreChat production Docker build passed. A live mortgage smoke test cancelled round one with one pinned card; round two rediscovered that same card, performed web search, and returned the card first followed by 15 web results.

@@ -7,12 +7,22 @@ type SearchResult = {
   url: string;
   content: string;
   rerank_score?: number;
+  kb_answer_card?: boolean;
 };
 
 type CJSearchResponse = {
   success: boolean;
   results?: SearchResult[];
   timing?: Record<string, number>;
+  kb_cards?: {
+    card_ids?: string[];
+    new_card_ids?: string[];
+    search_round?: number;
+    repeated_only?: boolean;
+    web_search_cancelled?: boolean;
+    cards_pinned_before_web?: boolean;
+    cards_submitted_to_cohere?: boolean;
+  };
   error?: { message?: string };
 };
 
@@ -30,23 +40,34 @@ type CJRouterSearchConfig = SearchCallbacks & {
 };
 
 export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnType<typeof tool> {
+  let searchRound = 0;
+  const returnedCardIds = new Set<string>();
   return tool(
     async (input: { queries: string[]; intent?: string }, runnableConfig?: RunnableConfig) => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), config.timeoutMs ?? 120_000);
       try {
+        searchRound += 1;
         const response = await fetch(config.apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
           },
-          body: JSON.stringify({ queries: input.queries }),
+          body: JSON.stringify({
+            queries: input.queries,
+            intent: input.intent,
+            search_round: searchRound,
+            previous_card_ids: Array.from(returnedCardIds),
+          }),
           signal: controller.signal,
         });
         const payload = (await response.json()) as CJSearchResponse;
         if (!response.ok || !payload.success) {
           throw new Error(payload.error?.message ?? `CJ Router search failed (${response.status})`);
+        }
+        for (const cardId of payload.kb_cards?.card_ids ?? []) {
+          returnedCardIds.add(cardId);
         }
         const organic = (payload.results ?? []).map((result) => ({
           title: result.title ?? result.url,
@@ -71,6 +92,7 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
             type: 'link',
           })),
           cjRouterTiming: payload.timing,
+          cjRouterKbCards: payload.kb_cards,
         };
         await config.onSearchResults?.({ success: true, data }, runnableConfig);
         const content = organic
@@ -83,7 +105,9 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
           content || 'No relevant web results were returned.',
           {
             [Constants.WEB_SEARCH]: data,
-            outcome: `Returned ${organic.length} globally reranked web evidence items for: ${input.queries.join(' | ')}`,
+            outcome: payload.kb_cards?.web_search_cancelled
+              ? `Returned ${payload.kb_cards.card_ids?.length ?? 0} verified KB card(s); web search was cancelled because newly available cards fully covered the request.`
+              : `Returned ${organic.length} evidence items (verified KB cards pinned first, followed by globally reranked web evidence) for: ${input.queries.join(' | ')}`,
           },
         ];
       } catch (error) {
