@@ -495,7 +495,6 @@ const loadTools = async ({
                 : 'basic',
             useKbCards,
             originalIntent,
-            initialCardIds: kbPreload.cardIds,
             onSearchResults,
           });
         };

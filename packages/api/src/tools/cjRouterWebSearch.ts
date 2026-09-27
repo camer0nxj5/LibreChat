@@ -40,7 +40,6 @@ type CJRouterSearchConfig = SearchCallbacks & {
   searchMode?: 'basic' | 'advanced';
   useKbCards?: boolean;
   originalIntent?: string;
-  initialCardIds?: string[];
 };
 
 
@@ -100,7 +99,7 @@ export async function preloadCJRouterKbCards(config: {
 
 export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnType<typeof tool> {
   let searchRound = 0;
-  const returnedCardIds = new Set<string>(config.initialCardIds ?? []);
+  const returnedCardIds = new Set<string>();
   const searchMode = config.searchMode === 'basic' ? 'basic' : 'advanced';
   return tool(
     async (

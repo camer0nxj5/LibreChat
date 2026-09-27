@@ -364,7 +364,7 @@ Validation: the production LibreChat build and 29 router tests passed. The exact
 
 When **KB Cards** is enabled, LibreChat now performs a lookup-only card retrieval before the root model's first response. The retrieved card evidence is appended to the web-search tool context, allowing the model to answer directly from verified cards without first choosing to invoke `web_search`. The lookup-only request never runs the coverage model, Tavily, extraction, or Cohere.
 
-LibreChat preserves the original user message separately from the model-generated web query. Every later search request sends that immutable original message as `intent`; the model's `query`/`queries` fields control only external retrieval. Preloaded card IDs initialize the tool turn's returned-card set. If the model requests web search after already receiving those cards, rediscovering only the same cards counts as repeated evidence and web search proceeds.
+LibreChat preserves the original user message separately from the model-generated web query. Every later search request sends that immutable original message as `intent`; the model's `query`/`queries` fields control only external retrieval. Preloading does not consume a search round and does not initialize the tool turn's returned-card set. The first actual model `web_search` invocation is still subject to full-coverage cancellation. Only a second actual search invocation that rediscovers cards returned by the first tool call counts as repeated evidence and may proceed to the web.
 
 Files:
 
@@ -373,4 +373,4 @@ Files:
 - `LiteLLM-Config-CJ-Router/cj_router/router.py`
 - `LiteLLM-Config-CJ-Router/cj_router/test_sources.py`
 
-Validation: 31 router unit tests passed; the full LibreChat production Docker build passed. A live lookup-only smoke for “Does Qwen have a 35b model?” returned exactly the Qwen3.5 and Qwen3.6 cards in 34.7 ms with no coverage-model or web call.
+Validation: 30 router unit tests passed; the full LibreChat production Docker build passed. A live lookup-only smoke for “Does Qwen have a 35b model?” returned exactly the Qwen3.5 and Qwen3.6 cards in 34.7 ms. A production tool smoke then requested web search, deterministically classified both cards as full coverage, cancelled web retrieval, and completed the gate in 19.6 ms.
