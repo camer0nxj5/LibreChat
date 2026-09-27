@@ -24,6 +24,7 @@ const {
   resolveWebSearchSSRFAgents,
   buildWebSearchDynamicContext,
   createCJRouterSearchTool,
+  preloadCJRouterKbCards,
   codeExecutionAuthHeaders,
   resolveCodeExecutionContext,
 } = require('@librechat/api');
@@ -465,7 +466,24 @@ const loadTools = async ({
         }
         const { onSearchResults } = options?.[Tools.web_search] ?? {};
         requestedTools[tool] = async () => {
-          toolContextMap[tool] = buildWebSearchContext();
+          const originalIntent =
+            typeof options.req?.body?.text === 'string' ? options.req.body.text.trim() : '';
+          let kbPreload = { context: '', cardIds: [] };
+          if (useKbCards && originalIntent) {
+            try {
+              kbPreload = await preloadCJRouterKbCards({
+                apiUrl,
+                apiKey,
+                timeoutMs: Math.min(webSearch.cjRouterSearchTimeout ?? 120_000, 15_000),
+                originalIntent,
+              });
+            } catch (error) {
+              logger.warn('[handleTools] CJ Router KB preload failed; continuing with search tool.', error);
+            }
+          }
+          toolContextMap[tool] = [buildWebSearchContext(), kbPreload.context]
+            .filter(Boolean)
+            .join('\n\n');
           dynamicToolContextMap[tool] = buildWebSearchDynamicContext(options.req?.turnStartedAt);
           return createCJRouterSearchTool({
             apiUrl,
@@ -476,6 +494,8 @@ const loadTools = async ({
                 ? 'advanced'
                 : 'basic',
             useKbCards,
+            originalIntent,
+            initialCardIds: kbPreload.cardIds,
             onSearchResults,
           });
         };

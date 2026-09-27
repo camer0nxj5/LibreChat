@@ -39,11 +39,68 @@ type CJRouterSearchConfig = SearchCallbacks & {
   timeoutMs?: number;
   searchMode?: 'basic' | 'advanced';
   useKbCards?: boolean;
+  originalIntent?: string;
+  initialCardIds?: string[];
 };
+
+
+export type CJRouterKbPreload = {
+  context: string;
+  cardIds: string[];
+};
+
+export async function preloadCJRouterKbCards(config: {
+  apiUrl: string;
+  apiKey?: string;
+  timeoutMs?: number;
+  originalIntent: string;
+}): Promise<CJRouterKbPreload> {
+  const originalIntent = config.originalIntent.trim();
+  if (!originalIntent) {
+    return { context: '', cardIds: [] };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), config.timeoutMs ?? 15_000);
+  try {
+    const response = await fetch(config.apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        queries: [originalIntent],
+        intent: originalIntent,
+        use_kb_cards: true,
+        lookup_only: true,
+      }),
+      signal: controller.signal,
+    });
+    const payload = (await response.json()) as CJSearchResponse;
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.error?.message ?? `CJ Router KB preload failed (${response.status})`);
+    }
+    const cards = (payload.results ?? []).filter((result) => result.kb_answer_card === true);
+    if (!cards.length) {
+      return { context: '', cardIds: [] };
+    }
+    const context = [
+      '# Verified local KB answer cards',
+      'The following cards were automatically retrieved for the original user question. Use them as verified evidence. If they fully answer the question, answer directly without web search. If required facts are missing or current verification is necessary, invoke web_search.',
+      ...cards.map(
+        (result, index) =>
+          `## KB Card ${index + 1}: ${result.title ?? 'Local KB answer card'}\nSource: ${result.url}\n${result.content}`,
+      ),
+    ].join('\n\n');
+    return { context, cardIds: payload.kb_cards?.card_ids ?? [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnType<typeof tool> {
   let searchRound = 0;
-  const returnedCardIds = new Set<string>();
+  const returnedCardIds = new Set<string>(config.initialCardIds ?? []);
   const searchMode = config.searchMode === 'basic' ? 'basic' : 'advanced';
   return tool(
     async (
@@ -67,7 +124,7 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
           },
           body: JSON.stringify({
             queries,
-            intent: input.intent,
+            intent: config.originalIntent?.trim() || input.intent,
             search_round: searchRound,
             previous_card_ids: Array.from(returnedCardIds),
             search_mode: searchMode,
