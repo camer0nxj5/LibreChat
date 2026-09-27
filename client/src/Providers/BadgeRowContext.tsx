@@ -20,6 +20,7 @@ interface BadgeRowContextType {
   memory: ReturnType<typeof useToolToggle>;
   webSearch: ReturnType<typeof useToolToggle>;
   advancedSearch: ReturnType<typeof useToolToggle>;
+  kbCards: ReturnType<typeof useToolToggle>;
   webSearchLimit: ReturnType<typeof useToolToggle>;
   advancedSearchLimit: ReturnType<typeof useToolToggle>;
   artifacts: ReturnType<typeof useToolToggle>;
@@ -104,6 +105,7 @@ export default function BadgeRowProvider({
       const codeToggleKey = `${LocalStorageKeys.LAST_CODE_TOGGLE_}${storageSuffix}`;
       const webSearchToggleKey = `${LocalStorageKeys.LAST_WEB_SEARCH_TOGGLE_}${storageSuffix}`;
       const advancedSearchToggleKey = `${LocalStorageKeys.LAST_ADVANCED_SEARCH_TOGGLE_}${storageSuffix}`;
+      const kbCardsToggleKey = `${LocalStorageKeys.LAST_KB_CARDS_TOGGLE_}${storageSuffix}`;
       const webSearchLimitKey = `${LocalStorageKeys.LAST_WEB_SEARCH_LIMIT_}${storageSuffix}`;
       const advancedSearchLimitKey = `${LocalStorageKeys.LAST_ADVANCED_SEARCH_LIMIT_}${storageSuffix}`;
       const fileSearchToggleKey = `${LocalStorageKeys.LAST_FILE_SEARCH_TOGGLE_}${storageSuffix}`;
@@ -114,6 +116,7 @@ export default function BadgeRowProvider({
       const codeToggleValue = getTimestampedValue(codeToggleKey);
       const webSearchToggleValue = getTimestampedValue(webSearchToggleKey);
       const advancedSearchToggleValue = getTimestampedValue(advancedSearchToggleKey);
+      const kbCardsToggleValue = getTimestampedValue(kbCardsToggleKey);
       const webSearchLimitValue = getTimestampedValue(webSearchLimitKey);
       const advancedSearchLimitValue = getTimestampedValue(advancedSearchLimitKey);
       const fileSearchToggleValue = getTimestampedValue(fileSearchToggleKey);
@@ -144,6 +147,14 @@ export default function BadgeRowProvider({
           initialValues.advanced_search = JSON.parse(advancedSearchToggleValue);
         } catch (e) {
           console.error('Failed to parse advanced search toggle value:', e);
+        }
+      }
+
+      if (kbCardsToggleValue !== null) {
+        try {
+          initialValues.kb_cards = JSON.parse(kbCardsToggleValue);
+        } catch (e) {
+          console.error('Failed to parse KB Cards toggle value:', e);
         }
       }
 
@@ -285,6 +296,14 @@ export default function BadgeRowProvider({
     isAuthenticated: true,
   });
 
+  const kbCards = useToolToggle({
+    conversationId,
+    storageContextKey,
+    toolKey: 'kb_cards',
+    localStorageKey: LocalStorageKeys.LAST_KB_CARDS_TOGGLE_,
+    isAuthenticated: true,
+  });
+
   const webSearchLimit = useToolToggle({
     conversationId,
     storageContextKey,
@@ -350,6 +369,7 @@ export default function BadgeRowProvider({
     memory,
     webSearch,
     advancedSearch,
+    kbCards,
     webSearchLimit,
     advancedSearchLimit,
     artifacts,

@@ -37,17 +37,28 @@ type CJRouterSearchConfig = SearchCallbacks & {
   apiUrl: string;
   apiKey?: string;
   timeoutMs?: number;
+  searchMode?: 'basic' | 'advanced';
+  useKbCards?: boolean;
 };
 
 export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnType<typeof tool> {
   let searchRound = 0;
   const returnedCardIds = new Set<string>();
+  const searchMode = config.searchMode === 'basic' ? 'basic' : 'advanced';
   return tool(
-    async (input: { queries: string[]; intent?: string }, runnableConfig?: RunnableConfig) => {
+    async (
+      input: { query?: string; queries?: string[]; intent?: string },
+      runnableConfig?: RunnableConfig,
+    ) => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), config.timeoutMs ?? 120_000);
       try {
         searchRound += 1;
+        const queries = Array.isArray(input.queries)
+          ? input.queries
+          : typeof input.query === 'string'
+            ? [input.query]
+            : [];
         const response = await fetch(config.apiUrl, {
           method: 'POST',
           headers: {
@@ -55,10 +66,12 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
             ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
           },
           body: JSON.stringify({
-            queries: input.queries,
+            queries,
             intent: input.intent,
             search_round: searchRound,
             previous_card_ids: Array.from(returnedCardIds),
+            search_mode: searchMode,
+            use_kb_cards: config.useKbCards === true,
           }),
           signal: controller.signal,
         });
@@ -107,7 +120,7 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
             [Constants.WEB_SEARCH]: data,
             outcome: payload.kb_cards?.web_search_cancelled
               ? `Returned ${payload.kb_cards.card_ids?.length ?? 0} verified KB card(s); web search was cancelled because newly available cards fully covered the request.`
-              : `Returned ${organic.length} evidence items (verified KB cards pinned first, followed by globally reranked web evidence) for: ${input.queries.join(' | ')}`,
+              : `Returned ${organic.length} evidence items${config.useKbCards ? ' (verified KB cards pinned first when relevant)' : ''} from ${searchMode} search for: ${queries.join(' | ')}`,
           },
         ];
       } catch (error) {
@@ -125,20 +138,32 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
     {
       name: 'web_search',
       description:
-        'Search the current web. Put every independently useful query for this search into the queries array; they run concurrently and are merged into one globally reranked evidence set. You may invoke web_search at most twice total in one user turn.',
-      schema: {
-        type: 'object',
-        properties: {
-          queries: {
-            type: 'array',
-            items: { type: 'string' },
-            minItems: 1,
-            description: 'All web queries to run concurrently in this search invocation.',
-          },
-          intent: { type: 'string', description: 'Brief reason this search is needed.' },
-        },
-        required: ['queries'],
-      },
+        searchMode === 'basic'
+          ? 'Search the current web with one concise query. You may invoke web_search at most twice total in one user turn.'
+          : 'Search the current web. Put every independently useful query for this search into the queries array; they run concurrently and are merged into one globally reranked evidence set. You may invoke web_search at most twice total in one user turn.',
+      schema:
+        searchMode === 'basic'
+          ? {
+              type: 'object',
+              properties: {
+                query: { type: 'string', description: 'The web query to run.' },
+                intent: { type: 'string', description: 'Brief reason this search is needed.' },
+              },
+              required: ['query'],
+            }
+          : {
+              type: 'object',
+              properties: {
+                queries: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  minItems: 1,
+                  description: 'All web queries to run concurrently in this search invocation.',
+                },
+                intent: { type: 'string', description: 'Brief reason this search is needed.' },
+              },
+              required: ['queries'],
+            },
       responseFormat: Constants.CONTENT_AND_ARTIFACT,
     },
   );

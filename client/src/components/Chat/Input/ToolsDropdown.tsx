@@ -5,6 +5,7 @@ import {
   Brain,
   ChevronDown,
   ChevronUp,
+  Database,
   Globe,
   ScrollText,
   Settings,
@@ -90,6 +91,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     memory,
     webSearch,
     advancedSearch,
+    kbCards,
     webSearchLimit,
     advancedSearchLimit,
     artifacts,
@@ -109,6 +111,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
   const { isPinned: isCodePinned, setIsPinned: setIsCodePinned } = codeInterpreter ?? {};
   const { isPinned: isAdvancedSearchPinned, setIsPinned: setIsAdvancedSearchPinned } =
     advancedSearch ?? {};
+  const { isPinned: isKbCardsPinned, setIsPinned: setIsKbCardsPinned } = kbCards ?? {};
   const { isPinned: isFileSearchPinned, setIsPinned: setIsFileSearchPinned } = fileSearch ?? {};
   const { isPinned: isArtifactsPinned, setIsPinned: setIsArtifactsPinned } = artifacts ?? {};
   const { isPinned: isSkillsPinned, setIsPinned: setIsSkillsPinned } = skills ?? {};
@@ -137,6 +140,11 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
       web_search: false,
     }));
   }, [advancedSearch]);
+
+  const handleKbCardsToggle = useCallback(() => {
+    const newValue = !kbCards?.toggleState;
+    kbCards?.debouncedChange({ value: newValue });
+  }, [kbCards]);
 
   const roundLimitStepper = (
     value: unknown,
@@ -354,6 +362,36 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
               </div>
             </button>
           </div>
+        </div>
+      ),
+    });
+
+    dropdownItems.push({
+      onClick: handleKbCardsToggle,
+      hideOnClick: false,
+      render: (props) => (
+        <div {...props} data-testid="tools-menu-kb-cards">
+          <div className="flex items-center gap-2">
+            <Database className="icon-md text-blue-500" aria-hidden="true" />
+            <span>KB Cards</span>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsKbCardsPinned?.(!isKbCardsPinned);
+            }}
+            className={cn(
+              'rounded p-1 transition-all duration-200',
+              'hover:bg-surface-secondary hover:shadow-sm',
+              !isKbCardsPinned && 'text-text-secondary hover:text-text-primary',
+            )}
+            aria-label={isKbCardsPinned ? 'Unpin' : 'Pin'}
+          >
+            <div className="h-4 w-4">
+              <PinIcon unpin={isKbCardsPinned} />
+            </div>
+          </button>
         </div>
       ),
     });

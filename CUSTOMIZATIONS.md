@@ -331,3 +331,31 @@ Files:
 - `LiteLLM-Config-CJ-Router/cj_router/test_sources.py`
 
 Validation: all 24 router unit tests and the LibreChat production Docker build passed. A live mortgage smoke test cancelled round one with one pinned card; round two rediscovered that same card, performed web search, and returned the card first followed by 15 web results.
+
+### 2026-09-26: independent KB Cards search control
+
+KB answer-card retrieval is exposed as an independent **KB Cards** composer tool. It can be enabled with either regular Search or Advanced Search and is pinned by default. Search and Advanced Search remain mutually exclusive; KB Cards is independent.
+
+- KB Cards off: regular Search keeps LibreChat's native Tavily-basic path, while Advanced Search uses CJ Router without card lookup.
+- KB Cards on: both modes call CJ Router with `use_kb_cards: true` and their selected `search_mode`.
+- Basic mode uses Tavily basic search (five results), basic extraction, missing-extract retry, and production Cohere top-five reranking.
+- Advanced mode retains Tavily advanced search/extraction and production Cohere top-15 reranking.
+- Full first-round card coverage cancels web retrieval. Partial coverage pins cards before web results. A later search that rediscovers only previously returned cards proceeds to the selected web provider.
+
+UI/state files:
+
+- `client/src/components/Chat/Input/KBCardSearch.tsx`
+- `client/src/components/Chat/Input/BadgeRow.tsx`
+- `client/src/components/Chat/Input/ToolsDropdown.tsx`
+- `client/src/Providers/BadgeRowContext.tsx`
+- `client/src/utils/timestamps.ts`
+- `packages/data-provider/src/config.ts`
+- `packages/data-provider/src/types.ts`
+
+Backend files:
+
+- `api/app/clients/tools/util/handleTools.js`
+- `packages/api/src/tools/cjRouterWebSearch.ts`
+- `LiteLLM-Config-CJ-Router/cj_router/router.py`
+
+Validation: the production LibreChat build and 29 router tests passed. The exact prompt “Does Qwen have a 35b model?” returned the Qwen3.5 and Qwen3.6 cards in 23 ms and cancelled web search. An Advanced Search benchmark prompt pinned the Qwen3.6 card and continued web retrieval for the missing volatile benchmark facts.

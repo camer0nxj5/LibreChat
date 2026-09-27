@@ -451,7 +451,8 @@ const loadTools = async ({
       continue;
     } else if (tool === Tools.web_search) {
       const useAdvancedSearch = options.req?.body?.ephemeralAgent?.advanced_search === true;
-      if (useAdvancedSearch || webSearch?.searchProvider === 'cj_router') {
+      const useKbCards = options.req?.body?.ephemeralAgent?.kb_cards === true;
+      if (useAdvancedSearch || useKbCards || webSearch?.searchProvider === 'cj_router') {
         const resolveConfigValue = (value) => {
           const match = typeof value === 'string' && value.trim().match(/^\$\{([^}]+)\}$/);
           return match ? process.env[match[1]] : value;
@@ -470,6 +471,11 @@ const loadTools = async ({
             apiUrl,
             apiKey,
             timeoutMs: webSearch.cjRouterSearchTimeout,
+            searchMode:
+              useAdvancedSearch || webSearch?.searchProvider === 'cj_router'
+                ? 'advanced'
+                : 'basic',
+            useKbCards,
             onSearchResults,
           });
         };

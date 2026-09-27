@@ -4181,6 +4181,7 @@ export enum LocalStorageKeys {
   LAST_WEB_SEARCH_TOGGLE_ = 'LAST_WEB_SEARCH_TOGGLE_',
   /** Last checked toggle for CJ Advanced Search per conversation ID */
   LAST_ADVANCED_SEARCH_TOGGLE_ = 'LAST_ADVANCED_SEARCH_TOGGLE_',
+  LAST_KB_CARDS_TOGGLE_ = 'LAST_KB_CARDS_TOGGLE_',
   /** Per-conversation round limit for standard Web Search */
   LAST_WEB_SEARCH_LIMIT_ = 'LAST_WEB_SEARCH_LIMIT_',
   /** Per-conversation round limit for CJ Advanced Search */

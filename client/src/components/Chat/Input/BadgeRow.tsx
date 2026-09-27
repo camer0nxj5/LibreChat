@@ -22,6 +22,7 @@ import Artifacts from './Artifacts';
 import MCPSelect from './MCPSelect';
 import WebSearch from './WebSearch';
 import AdvancedSearch from './AdvancedSearch';
+import KBCardSearch from './KBCardSearch';
 import Memory from './Memory';
 import Skills from './Skills';
 import store from '~/store';
@@ -376,6 +377,7 @@ function BadgeRow({
           <>
             <WebSearch />
             <AdvancedSearch />
+            <KBCardSearch />
             <CodeInterpreter />
             <FileSearch />
             <Skills />

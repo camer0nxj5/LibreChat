@@ -120,6 +120,8 @@ export type TEphemeralAgent = {
   web_search?: boolean;
   /** Use the CJ Router advanced Tavily/extract/Cohere implementation for web_search. */
   advanced_search?: boolean;
+  /** Check KB answer cards before the selected basic or advanced web-search provider. */
+  kb_cards?: boolean;
   /** Per-chat search-round limits selected in the composer UI. */
   web_search_max_rounds?: number;
   advanced_search_max_rounds?: number;
