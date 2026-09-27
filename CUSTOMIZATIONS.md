@@ -355,6 +355,7 @@ UI/state files:
 Backend files:
 
 - `api/app/clients/tools/util/handleTools.js`
+- `api/server/services/ToolService.js`
 - `packages/api/src/tools/cjRouterWebSearch.ts`
 - `LiteLLM-Config-CJ-Router/cj_router/router.py`
 
@@ -362,7 +363,7 @@ Validation: the production LibreChat build and 29 router tests passed. The exact
 
 ### 2026-09-26: preload KB cards from the original user question
 
-When **KB Cards** is enabled, LibreChat performs a lookup-only card retrieval from the original user message while `loadTools` builds the root request. This must happen eagerly, before the lazy `returnMap` tool constructor is returned. Running preload inside that constructor is too late: the agent has already assembled and sent its first model prompt, causing an avoidable tool round and a second large prefill.
+When **KB Cards** is enabled, LibreChat performs a lookup-only card retrieval from the original user message while `loadTools` builds the root request. This must happen eagerly in both LibreChat tool-loader paths: before the legacy lazy `returnMap` constructor is returned and while the agent/deferred-tool definition registry is assembled. Running preload inside that constructor is too late: the agent has already assembled and sent its first model prompt, causing an avoidable tool round and a second large prefill.
 
 The retrieved card evidence is appended to the root web-search tool context before the first model call. Lookup-only coverage uses deterministic card rules and never runs the coverage model, Tavily, extraction, or Cohere. If every returned card has deterministic full coverage, LibreChat omits `web_search` from that turn entirely and instructs the model to answer directly from the cards. This avoids the misleading **Searched the web** UI event, the serialized tool result, and the second synthesis prefill. Partial or unknown coverage keeps the search tool available and preserves the normal card-plus-web policy.
 
@@ -371,6 +372,7 @@ LibreChat preserves the original user message separately from any model-generate
 Files:
 
 - `api/app/clients/tools/util/handleTools.js`
+- `api/server/services/ToolService.js`
 - `packages/api/src/tools/cjRouterWebSearch.ts`
 - `LiteLLM-Config-CJ-Router/cj_router/router.py`
 - `LiteLLM-Config-CJ-Router/cj_router/test_sources.py`

@@ -21,6 +21,7 @@ const {
   supportsProgrammaticCodeExecution,
   getMissingCustomUserVars,
   buildWebSearchDynamicContext,
+  preloadCJRouterKbCards,
   getCodeApiAuthHeaders,
   getReplayablePendingMCPOAuthStart,
   getMCPServerNamesFromTools,
@@ -858,7 +859,7 @@ async function loadToolDefinitionsWrapper({
   const mcpPermissionContext = createMCPPermissionContext(req);
   const canUseMCP = hasMCPTools ? await mcpPermissionContext.canUseServers(req.user) : true;
 
-  const filteredTools = agent.tools?.filter((tool) => {
+  let filteredTools = agent.tools?.filter((tool) => {
     if (tool === Tools.file_search) {
       return checkCapability(AgentCapabilities.file_search) && canUseTool(tool);
     }
@@ -886,11 +887,47 @@ async function loadToolDefinitionsWrapper({
     return true;
   });
 
+  let kbPreloadContext = '';
+  let kbPreloadFullCoverage = false;
+  const useKbCards = runtimeRequestBody?.ephemeralAgent?.kb_cards === true;
+  if (useKbCards && filteredTools?.includes(Tools.web_search)) {
+    const resolveConfigValue = (value) => {
+      const match = typeof value === 'string' && value.trim().match(/^\$\{([^}]+)\}$/);
+      return match ? process.env[match[1]] : value;
+    };
+    const webSearchConfig = appConfig?.webSearch ?? {};
+    const apiUrl = resolveConfigValue(webSearchConfig.cjRouterSearchUrl);
+    const apiKey = resolveConfigValue(webSearchConfig.cjRouterApiKey);
+    const originalIntent =
+      typeof runtimeRequestBody?.text === 'string' ? runtimeRequestBody.text.trim() : '';
+    if (apiUrl && originalIntent) {
+      try {
+        const kbPreload = await preloadCJRouterKbCards({
+          apiUrl,
+          apiKey,
+          timeoutMs: Math.min(webSearchConfig.cjRouterSearchTimeout ?? 120_000, 15_000),
+          originalIntent,
+        });
+        kbPreloadContext = kbPreload.context;
+        kbPreloadFullCoverage = kbPreload.fullCoverage;
+      } catch (error) {
+        logger.warn('[Tool Definitions] CJ Router KB preload failed; continuing with search tool.', error);
+      }
+    }
+    if (kbPreloadFullCoverage) {
+      filteredTools = filteredTools.filter((tool) => tool !== Tools.web_search);
+    }
+  }
+
   if (!filteredTools || filteredTools.length === 0) {
     if (hasExpectedMCPTools) {
       throw createExpectedMCPToolsUnavailableError(agent.name);
     }
-    return { toolDefinitions: [] };
+    return {
+      toolDefinitions: [],
+      toolContextMap: kbPreloadContext ? { [Tools.web_search]: kbPreloadContext } : {},
+      dynamicToolContextMap: {},
+    };
   }
 
   assertToolResourcesAllowed({
@@ -1435,7 +1472,13 @@ async function loadToolDefinitionsWrapper({
   }
 
   /** @type {Record<string, string>} */
-  const toolContextMap = {};
+  const toolContextMap = kbPreloadContext
+    ? {
+        [Tools.web_search]: kbPreloadFullCoverage
+          ? kbPreloadContext
+          : [buildWebSearchContext(), kbPreloadContext].filter(Boolean).join("\n\n"),
+      }
+    : {};
   /** @type {Record<string, string>} */
   const dynamicToolContextMap = {};
   const hasWebSearch = filteredTools.includes(Tools.web_search);
