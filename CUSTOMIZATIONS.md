@@ -367,6 +367,8 @@ When **KB Cards** is enabled, LibreChat performs a lookup-only card retrieval fr
 
 The retrieved card evidence is appended to the root web-search tool context before the first model call. Lookup-only coverage uses deterministic card rules and never runs the coverage model, Tavily, extraction, or Cohere. If every returned card has deterministic full coverage, LibreChat omits `web_search` from that turn entirely and instructs the model to answer directly from the cards. This avoids the misleading **Searched the web** UI event, the serialized tool result, and the second synthesis prefill. Partial or unknown coverage keeps the search tool available and preserves the normal card-plus-web policy.
 
+The agent loader receives both a normalized `requestBody` and the original Express `req.body`. The normalized body may omit composer-only `ephemeralAgent` fields and the original `text`, so KB enablement and the immutable user question must fall back to `req.body`. The preload emits a structured server log with context character count, card count, full-coverage state, and whether the web-search definition was removed. A search definition must never be advertised after the runtime registry has removed its implementation.
+
 LibreChat preserves the original user message separately from any model-generated web query. Every later search request sends that immutable original message as `intent`; the model's `query`/`queries` fields control only external retrieval. Preloading does not consume a search round and does not initialize the tool turn's returned-card set.
 
 Files:

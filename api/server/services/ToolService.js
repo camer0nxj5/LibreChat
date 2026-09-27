@@ -889,7 +889,9 @@ async function loadToolDefinitionsWrapper({
 
   let kbPreloadContext = '';
   let kbPreloadFullCoverage = false;
-  const useKbCards = runtimeRequestBody?.ephemeralAgent?.kb_cards === true;
+  const requestEphemeralAgent =
+    runtimeRequestBody?.ephemeralAgent ?? req.body?.ephemeralAgent;
+  const useKbCards = requestEphemeralAgent?.kb_cards === true;
   if (useKbCards && filteredTools?.includes(Tools.web_search)) {
     const resolveConfigValue = (value) => {
       const match = typeof value === 'string' && value.trim().match(/^\$\{([^}]+)\}$/);
@@ -898,8 +900,8 @@ async function loadToolDefinitionsWrapper({
     const webSearchConfig = appConfig?.webSearch ?? {};
     const apiUrl = resolveConfigValue(webSearchConfig.cjRouterSearchUrl);
     const apiKey = resolveConfigValue(webSearchConfig.cjRouterApiKey);
-    const originalIntent =
-      typeof runtimeRequestBody?.text === 'string' ? runtimeRequestBody.text.trim() : '';
+    const originalText = runtimeRequestBody?.text ?? req.body?.text;
+    const originalIntent = typeof originalText === 'string' ? originalText.trim() : '';
     if (apiUrl && originalIntent) {
       try {
         const kbPreload = await preloadCJRouterKbCards({
@@ -910,6 +912,13 @@ async function loadToolDefinitionsWrapper({
         });
         kbPreloadContext = kbPreload.context;
         kbPreloadFullCoverage = kbPreload.fullCoverage;
+        logger.info('[Tool Definitions] CJ Router KB preload completed.', {
+          requestId: req.id,
+          contextChars: kbPreloadContext.length,
+          cardCount: kbPreload.cardIds.length,
+          fullCoverage: kbPreloadFullCoverage,
+          webSearchDefinitionRemoved: kbPreloadFullCoverage,
+        });
       } catch (error) {
         logger.warn('[Tool Definitions] CJ Router KB preload failed; continuing with search tool.', error);
       }
