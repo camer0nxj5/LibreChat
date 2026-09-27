@@ -942,6 +942,41 @@ describe('Tool Handlers', () => {
       );
     });
 
+    it('keeps web search when currentness requires verification even with full KB coverage', async () => {
+      mockPreloadCJRouterKbCards.mockResolvedValueOnce({
+        context: 'KB evidence for the original question',
+        cardIds: ['range-card'],
+        fullCoverage: true,
+      });
+
+      const result = await loadTools({
+        user: fakeUser._id.toString(),
+        tools: [Tools.web_search],
+        webSearch: {
+          searchProvider: 'tavily',
+          cjRouterSearchUrl: 'http://cj-router.test/v1/librechat/web-search',
+          cjRouterApiKey: 'test-key',
+        },
+        options: {
+          req: {
+            user: { id: fakeUser._id.toString(), role: 'USER' },
+            body: {
+              text: 'Give me the latest list of models with 40B to 100B total parameters',
+              ephemeralAgent: { kb_cards: true },
+            },
+          },
+        },
+      });
+
+      expect(result.loadedTools).toHaveLength(1);
+      expect(result.toolContextMap[Tools.web_search]).toContain(
+        'Invoke web_search before giving the final answer',
+      );
+      expect(result.toolContextMap[Tools.web_search]).toContain(
+        'KB evidence for the original question',
+      );
+    });
+
     it('threads pooled SSRF-safe agents into the search tool config', async () => {
       const config = await loadWebSearchConfig({ allowedAddresses: ['localhost:8888'] });
 

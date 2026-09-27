@@ -22,6 +22,8 @@ const {
   getMissingCustomUserVars,
   buildWebSearchDynamicContext,
   preloadCJRouterKbCards,
+  resolveCJRouterSearchIntent,
+  buildCJRouterRequiredSearchContext,
   getCodeApiAuthHeaders,
   getReplayablePendingMCPOAuthStart,
   getMCPServerNamesFromTools,
@@ -117,7 +119,7 @@ const { createOpenIDSessionTokenProvider } = require('~/server/services/OpenIDSe
 const { getMCPRequestContext } = require('~/server/services/MCPRequestContext');
 const { recordUsage } = require('~/server/services/Threads');
 const { loadTools } = require('~/app/clients/tools/util');
-const { findPluginAuthsByKeys, getRoleByName } = require('~/models');
+const { findPluginAuthsByKeys, getRoleByName, getMessages } = require('~/models');
 const { getFlowStateManager, getMCPServersRegistry } = require('~/config');
 const { getLogStores } = require('~/cache');
 
@@ -892,6 +894,31 @@ async function loadToolDefinitionsWrapper({
   const requestEphemeralAgent =
     runtimeRequestBody?.ephemeralAgent ?? req.body?.ephemeralAgent;
   const useKbCards = requestEphemeralAgent?.kb_cards === true;
+  const originalText = runtimeRequestBody?.text ?? req.body?.text;
+  const currentIntent = typeof originalText === 'string' ? originalText.trim() : '';
+  let priorUserTexts = [];
+  const conversationId = runtimeRequestBody?.conversationId ?? req.body?.conversationId;
+  if (currentIntent && conversationId && conversationId !== Constants.NEW_CONVO) {
+    try {
+      const recentMessages = await getMessages(
+        { conversationId, user: req.user?.id },
+        'text isCreatedByUser sender createdAt',
+        { sort: { createdAt: -1 }, limit: 20 },
+      );
+      priorUserTexts = recentMessages
+        .filter(
+          (message) =>
+            message?.isCreatedByUser === true ||
+            String(message?.sender ?? '').toLowerCase() === 'user',
+        )
+        .map((message) => message?.text)
+        .filter((text) => typeof text === 'string');
+    } catch (error) {
+      logger.warn('[Tool Definitions] Could not resolve prior user intent; using current turn.', error);
+    }
+  }
+  const originalIntent = resolveCJRouterSearchIntent(currentIntent, priorUserTexts);
+  const requiredSearchContext = buildCJRouterRequiredSearchContext(originalIntent);
   if (useKbCards && filteredTools?.includes(Tools.web_search)) {
     const resolveConfigValue = (value) => {
       const match = typeof value === 'string' && value.trim().match(/^\$\{([^}]+)\}$/);
@@ -900,8 +927,6 @@ async function loadToolDefinitionsWrapper({
     const webSearchConfig = appConfig?.webSearch ?? {};
     const apiUrl = resolveConfigValue(webSearchConfig.cjRouterSearchUrl);
     const apiKey = resolveConfigValue(webSearchConfig.cjRouterApiKey);
-    const originalText = runtimeRequestBody?.text ?? req.body?.text;
-    const originalIntent = typeof originalText === 'string' ? originalText.trim() : '';
     if (apiUrl && originalIntent) {
       try {
         const kbPreload = await preloadCJRouterKbCards({
@@ -917,13 +942,13 @@ async function loadToolDefinitionsWrapper({
           contextChars: kbPreloadContext.length,
           cardCount: kbPreload.cardIds.length,
           fullCoverage: kbPreloadFullCoverage,
-          webSearchDefinitionRemoved: kbPreloadFullCoverage,
+          webSearchDefinitionRemoved: kbPreloadFullCoverage && !requiredSearchContext,
         });
       } catch (error) {
         logger.warn('[Tool Definitions] CJ Router KB preload failed; continuing with search tool.', error);
       }
     }
-    if (kbPreloadFullCoverage) {
+    if (kbPreloadFullCoverage && !requiredSearchContext) {
       filteredTools = filteredTools.filter((tool) => tool !== Tools.web_search);
     }
   }
@@ -934,7 +959,14 @@ async function loadToolDefinitionsWrapper({
     }
     return {
       toolDefinitions: [],
-      toolContextMap: kbPreloadContext ? { [Tools.web_search]: kbPreloadContext } : {},
+      toolContextMap:
+        kbPreloadContext || requiredSearchContext
+          ? {
+              [Tools.web_search]: [requiredSearchContext, kbPreloadContext]
+                .filter(Boolean)
+                .join('\n\n'),
+            }
+          : {},
       dynamicToolContextMap: {},
     };
   }
@@ -1481,11 +1513,13 @@ async function loadToolDefinitionsWrapper({
   }
 
   /** @type {Record<string, string>} */
-  const toolContextMap = kbPreloadContext
+  const toolContextMap = kbPreloadContext || requiredSearchContext
     ? {
         [Tools.web_search]: kbPreloadFullCoverage
-          ? kbPreloadContext
-          : [buildWebSearchContext(), kbPreloadContext].filter(Boolean).join("\n\n"),
+          ? [requiredSearchContext, kbPreloadContext].filter(Boolean).join('\n\n')
+          : [buildWebSearchContext(), requiredSearchContext, kbPreloadContext]
+              .filter(Boolean)
+              .join('\n\n'),
       }
     : {};
   /** @type {Record<string, string>} */
@@ -1495,7 +1529,13 @@ async function loadToolDefinitionsWrapper({
   const hasExecuteCode = filteredTools.includes(Tools.execute_code);
 
   if (hasWebSearch) {
-    toolContextMap[Tools.web_search] = buildWebSearchContext();
+    toolContextMap[Tools.web_search] = [
+      buildWebSearchContext(),
+      requiredSearchContext,
+      kbPreloadContext,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
     dynamicToolContextMap[Tools.web_search] = buildWebSearchDynamicContext(req.turnStartedAt);
   }
 

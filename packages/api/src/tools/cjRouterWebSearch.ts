@@ -43,6 +43,53 @@ type CJRouterSearchConfig = SearchCallbacks & {
   originalIntent?: string;
 };
 
+const EXPLICIT_WEB_SEARCH_PATTERN =
+  /\b(?:search|browse|check|look)\s+(?:the\s+)?(?:web|internet|online)\b|\b(?:web|internet)\s+search\b|\blook\s+(?:it|this|that)\s+up\b/i;
+const CURRENTNESS_PATTERN =
+  /\b(?:latest|current|currently|today|newest|most recent|up[- ]to[- ]date|updated?|as of)\b/i;
+const VOLATILE_SUBJECT_PATTERN =
+  /\b(?:list|models?|releases?|versions?|prices?|pricing|rates?|rules?|laws?|limits?|eligibility|availability|products?|services?|specs?|specifications?|software|hardware|news|status|schedule|rankings?|benchmarks?)\b/i;
+const META_AUDIT_PATTERN =
+  /\b(?:why did|why does|why was|what did you mean|previous answer|your answer|you said|you mentioned|reference(?:d)?|explain your)\b/i;
+const REFERENTIAL_FOLLOWUP_PATTERN =
+  /^(?:please\s+)?(?:try again|update(?: this| it| the (?:answer|list))?|search (?:the )?(?:web|internet)(?: and update)?|look (?:it|this|that) up|check (?:the )?(?:web|internet)|give me the latest|use the latest)(?:[\s.!?].*)?$/i;
+
+export function isCJRouterReferentialFollowup(text: string): boolean {
+  return REFERENTIAL_FOLLOWUP_PATTERN.test(text.trim());
+}
+
+export function resolveCJRouterSearchIntent(
+  currentText: string,
+  priorUserTexts: string[] = [],
+): string {
+  const current = currentText.trim();
+  if (!current || !isCJRouterReferentialFollowup(current)) {
+    return current;
+  }
+  const prior = priorUserTexts
+    .map((text) => text.trim())
+    .find((text) => text && text !== current && !isCJRouterReferentialFollowup(text));
+  return prior ? `Original request: ${prior}\nCurrent instruction: ${current}` : current;
+}
+
+export function buildCJRouterRequiredSearchContext(text: string): string {
+  const value = text.trim();
+  if (!value || META_AUDIT_PATTERN.test(value)) {
+    return '';
+  }
+  const explicit = EXPLICIT_WEB_SEARCH_PATTERN.test(value);
+  const currentInventory = CURRENTNESS_PATTERN.test(value) && VOLATILE_SUBJECT_PATTERN.test(value);
+  if (!explicit && !currentInventory) {
+    return '';
+  }
+  return [
+    '# Required web-search action for this turn',
+    'The user explicitly requested web verification or asked for current information about a changing subject.',
+    'Invoke web_search before giving the final answer. Do not answer the current factual request from training knowledge alone.',
+    'Use any verified local KB cards already supplied as evidence, but do not treat them as a substitute for the required current web check.',
+  ].join('\n');
+}
+
 
 export type CJRouterKbPreload = {
   context: string;

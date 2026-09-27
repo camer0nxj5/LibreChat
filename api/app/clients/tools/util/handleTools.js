@@ -25,6 +25,8 @@ const {
   buildWebSearchDynamicContext,
   createCJRouterSearchTool,
   preloadCJRouterKbCards,
+  resolveCJRouterSearchIntent,
+  buildCJRouterRequiredSearchContext,
   codeExecutionAuthHeaders,
   resolveCodeExecutionContext,
 } = require('@librechat/api');
@@ -69,7 +71,7 @@ const { getUserPluginAuthValue } = require('~/server/services/PluginService');
 const { loadAuthValues } = require('~/server/services/Tools/credentials');
 const { getMCPServerTools, checkCapability } = require('~/server/services/Config');
 const { getMCPServersRegistry } = require('~/config');
-const { getRoleByName, setMemory, deleteMemory, getFormattedMemories } = require('~/models');
+const { getRoleByName, setMemory, deleteMemory, getFormattedMemories, getMessages } = require('~/models');
 
 /**
  * Validates the availability and authentication of tools for a user based on environment variables or user-specific plugin authentication values.
@@ -465,8 +467,31 @@ const loadTools = async ({
           continue;
         }
         const { onSearchResults } = options?.[Tools.web_search] ?? {};
-        const originalIntent =
+        const currentIntent =
           typeof options.req?.body?.text === 'string' ? options.req.body.text.trim() : '';
+        let priorUserTexts = [];
+        const conversationId = options.req?.body?.conversationId;
+        if (currentIntent && conversationId && conversationId !== Constants.NEW_CONVO) {
+          try {
+            const recentMessages = await getMessages(
+              { conversationId, user: options.req?.user?.id ?? user },
+              'text isCreatedByUser sender createdAt',
+              { sort: { createdAt: -1 }, limit: 20 },
+            );
+            priorUserTexts = recentMessages
+              .filter(
+                (message) =>
+                  message?.isCreatedByUser === true ||
+                  String(message?.sender ?? '').toLowerCase() === 'user',
+              )
+              .map((message) => message?.text)
+              .filter((text) => typeof text === 'string');
+          } catch (error) {
+            logger.warn('[handleTools] Could not resolve prior user intent; using current turn.', error);
+          }
+        }
+        const originalIntent = resolveCJRouterSearchIntent(currentIntent, priorUserTexts);
+        const requiredSearchContext = buildCJRouterRequiredSearchContext(originalIntent);
         let kbPreload = { context: '', cardIds: [], fullCoverage: false };
         if (useKbCards && originalIntent) {
           try {
@@ -480,11 +505,11 @@ const loadTools = async ({
             logger.warn('[handleTools] CJ Router KB preload failed; continuing with search tool.', error);
           }
         }
-        toolContextMap[tool] = [buildWebSearchContext(), kbPreload.context]
+        toolContextMap[tool] = [buildWebSearchContext(), requiredSearchContext, kbPreload.context]
           .filter(Boolean)
           .join('\n\n');
         dynamicToolContextMap[tool] = buildWebSearchDynamicContext(options.req?.turnStartedAt);
-        if (kbPreload.fullCoverage) {
+        if (kbPreload.fullCoverage && !requiredSearchContext) {
           continue;
         }
         requestedTools[tool] = async () =>
