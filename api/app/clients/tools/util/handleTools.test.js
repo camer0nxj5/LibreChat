@@ -15,6 +15,11 @@ const mockPrimeCodeFiles = jest.fn(async () => ({ files: [], toolContext: undefi
 
 const mockCreateSearchTool = jest.fn(() => ({ name: 'web_search' }));
 const mockCreateCodeExecutionTool = jest.fn(() => ({ name: 'execute_code' }));
+const mockPreloadCJRouterKbCards = jest.fn(async () => ({
+  context: '',
+  cardIds: [],
+  fullCoverage: false,
+}));
 const mockLoadWebSearchAuth = jest.fn(async () => ({
   authenticated: true,
   authResult: { searchProvider: 'serper', searxngInstanceUrl: 'http://searxng.internal:8080' },
@@ -33,6 +38,7 @@ jest.mock('~/server/services/Files/Code/process', () => ({
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
   loadWebSearchAuth: (...args) => mockLoadWebSearchAuth(...args),
+  preloadCJRouterKbCards: (...args) => mockPreloadCJRouterKbCards(...args),
 }));
 
 jest.mock('~/server/services/PluginService', () => mockPluginService);
@@ -900,6 +906,41 @@ describe('Tool Handlers', () => {
       await toolMap[Tools.web_search]();
       return mockCreateSearchTool.mock.calls.at(-1)[0];
     }
+
+    it('eagerly preloads full KB coverage and omits web search before lazy tool construction', async () => {
+      mockPreloadCJRouterKbCards.mockResolvedValueOnce({
+        context: 'KB evidence for the original question',
+        cardIds: ['qwen-card'],
+        fullCoverage: true,
+      });
+
+      const result = await loadTools({
+        user: fakeUser._id.toString(),
+        tools: [Tools.web_search],
+        webSearch: {
+          searchProvider: 'tavily',
+          cjRouterSearchUrl: 'http://cj-router.test/v1/librechat/web-search',
+          cjRouterApiKey: 'test-key',
+        },
+        options: {
+          req: {
+            user: { id: fakeUser._id.toString(), role: 'USER' },
+            body: {
+              text: 'Does Qwen have a 35b model?',
+              ephemeralAgent: { kb_cards: true },
+            },
+          },
+        },
+      });
+
+      expect(mockPreloadCJRouterKbCards).toHaveBeenCalledWith(
+        expect.objectContaining({ originalIntent: 'Does Qwen have a 35b model?' }),
+      );
+      expect(result.loadedTools).toEqual([]);
+      expect(result.toolContextMap[Tools.web_search]).toContain(
+        'KB evidence for the original question',
+      );
+    });
 
     it('threads pooled SSRF-safe agents into the search tool config', async () => {
       const config = await loadWebSearchConfig({ allowedAddresses: ['localhost:8888'] });

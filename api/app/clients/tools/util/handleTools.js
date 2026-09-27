@@ -465,27 +465,30 @@ const loadTools = async ({
           continue;
         }
         const { onSearchResults } = options?.[Tools.web_search] ?? {};
-        requestedTools[tool] = async () => {
-          const originalIntent =
-            typeof options.req?.body?.text === 'string' ? options.req.body.text.trim() : '';
-          let kbPreload = { context: '', cardIds: [] };
-          if (useKbCards && originalIntent) {
-            try {
-              kbPreload = await preloadCJRouterKbCards({
-                apiUrl,
-                apiKey,
-                timeoutMs: Math.min(webSearch.cjRouterSearchTimeout ?? 120_000, 15_000),
-                originalIntent,
-              });
-            } catch (error) {
-              logger.warn('[handleTools] CJ Router KB preload failed; continuing with search tool.', error);
-            }
+        const originalIntent =
+          typeof options.req?.body?.text === 'string' ? options.req.body.text.trim() : '';
+        let kbPreload = { context: '', cardIds: [], fullCoverage: false };
+        if (useKbCards && originalIntent) {
+          try {
+            kbPreload = await preloadCJRouterKbCards({
+              apiUrl,
+              apiKey,
+              timeoutMs: Math.min(webSearch.cjRouterSearchTimeout ?? 120_000, 15_000),
+              originalIntent,
+            });
+          } catch (error) {
+            logger.warn('[handleTools] CJ Router KB preload failed; continuing with search tool.', error);
           }
-          toolContextMap[tool] = [buildWebSearchContext(), kbPreload.context]
-            .filter(Boolean)
-            .join('\n\n');
-          dynamicToolContextMap[tool] = buildWebSearchDynamicContext(options.req?.turnStartedAt);
-          return createCJRouterSearchTool({
+        }
+        toolContextMap[tool] = [buildWebSearchContext(), kbPreload.context]
+          .filter(Boolean)
+          .join('\n\n');
+        dynamicToolContextMap[tool] = buildWebSearchDynamicContext(options.req?.turnStartedAt);
+        if (kbPreload.fullCoverage) {
+          continue;
+        }
+        requestedTools[tool] = async () =>
+          createCJRouterSearchTool({
             apiUrl,
             apiKey,
             timeoutMs: webSearch.cjRouterSearchTimeout,
@@ -497,7 +500,6 @@ const loadTools = async ({
             originalIntent,
             onSearchResults,
           });
-        };
         continue;
       }
       const result = await loadWebSearchAuth({

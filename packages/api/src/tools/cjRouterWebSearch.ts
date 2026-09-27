@@ -16,6 +16,7 @@ type CJSearchResponse = {
   timing?: Record<string, number>;
   kb_cards?: {
     card_ids?: string[];
+    coverage?: Array<{ action?: string; coverage?: string; reason?: string }>;
     new_card_ids?: string[];
     search_round?: number;
     repeated_only?: boolean;
@@ -46,6 +47,7 @@ type CJRouterSearchConfig = SearchCallbacks & {
 export type CJRouterKbPreload = {
   context: string;
   cardIds: string[];
+  fullCoverage: boolean;
 };
 
 export async function preloadCJRouterKbCards(config: {
@@ -56,7 +58,7 @@ export async function preloadCJRouterKbCards(config: {
 }): Promise<CJRouterKbPreload> {
   const originalIntent = config.originalIntent.trim();
   if (!originalIntent) {
-    return { context: '', cardIds: [] };
+    return { context: '', cardIds: [], fullCoverage: false };
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.timeoutMs ?? 15_000);
@@ -81,17 +83,24 @@ export async function preloadCJRouterKbCards(config: {
     }
     const cards = (payload.results ?? []).filter((result) => result.kb_answer_card === true);
     if (!cards.length) {
-      return { context: '', cardIds: [] };
+      return { context: '', cardIds: [], fullCoverage: false };
     }
+    const coverage = payload.kb_cards?.coverage ?? [];
+    const fullCoverage =
+      coverage.length === cards.length &&
+      coverage.length > 0 &&
+      coverage.every((item) => item.action === 'kb_only');
     const context = [
       '# Verified local KB answer cards',
-      'The following cards were automatically retrieved for the original user question. Use them as verified evidence. If they fully answer the question, answer directly without web search. If required facts are missing or current verification is necessary, invoke web_search.',
+      fullCoverage
+        ? 'These cards deterministically cover the complete original user question. Answer directly from them. Do not invoke web_search for this turn.'
+        : 'The following cards were automatically retrieved for the original user question. Use them as verified evidence. If required facts are missing or current verification is necessary, invoke web_search.',
       ...cards.map(
         (result, index) =>
           `## KB Card ${index + 1}: ${result.title ?? 'Local KB answer card'}\nSource: ${result.url}\n${result.content}`,
       ),
     ].join('\n\n');
-    return { context, cardIds: payload.kb_cards?.card_ids ?? [] };
+    return { context, cardIds: payload.kb_cards?.card_ids ?? [], fullCoverage };
   } finally {
     clearTimeout(timer);
   }

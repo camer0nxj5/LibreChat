@@ -362,9 +362,11 @@ Validation: the production LibreChat build and 29 router tests passed. The exact
 
 ### 2026-09-26: preload KB cards from the original user question
 
-When **KB Cards** is enabled, LibreChat now performs a lookup-only card retrieval before the root model's first response. The retrieved card evidence is appended to the web-search tool context, allowing the model to answer directly from verified cards without first choosing to invoke `web_search`. The lookup-only request never runs the coverage model, Tavily, extraction, or Cohere.
+When **KB Cards** is enabled, LibreChat performs a lookup-only card retrieval from the original user message while `loadTools` builds the root request. This must happen eagerly, before the lazy `returnMap` tool constructor is returned. Running preload inside that constructor is too late: the agent has already assembled and sent its first model prompt, causing an avoidable tool round and a second large prefill.
 
-LibreChat preserves the original user message separately from the model-generated web query. Every later search request sends that immutable original message as `intent`; the model's `query`/`queries` fields control only external retrieval. Preloading does not consume a search round and does not initialize the tool turn's returned-card set. The first actual model `web_search` invocation is still subject to full-coverage cancellation. Only a second actual search invocation that rediscovers cards returned by the first tool call counts as repeated evidence and may proceed to the web.
+The retrieved card evidence is appended to the root web-search tool context before the first model call. Lookup-only coverage uses deterministic card rules and never runs the coverage model, Tavily, extraction, or Cohere. If every returned card has deterministic full coverage, LibreChat omits `web_search` from that turn entirely and instructs the model to answer directly from the cards. This avoids the misleading **Searched the web** UI event, the serialized tool result, and the second synthesis prefill. Partial or unknown coverage keeps the search tool available and preserves the normal card-plus-web policy.
+
+LibreChat preserves the original user message separately from any model-generated web query. Every later search request sends that immutable original message as `intent`; the model's `query`/`queries` fields control only external retrieval. Preloading does not consume a search round and does not initialize the tool turn's returned-card set.
 
 Files:
 
@@ -373,4 +375,4 @@ Files:
 - `LiteLLM-Config-CJ-Router/cj_router/router.py`
 - `LiteLLM-Config-CJ-Router/cj_router/test_sources.py`
 
-Validation: 30 router unit tests passed; the full LibreChat production Docker build passed. A live lookup-only smoke for “Does Qwen have a 35b model?” returned exactly the Qwen3.5 and Qwen3.6 cards in 34.7 ms. A production tool smoke then requested web search, deterministically classified both cards as full coverage, cancelled web retrieval, and completed the gate in 19.6 ms.
+Validation: 30 router unit tests passed; a focused eager-preload loader regression test was added and the full LibreChat production Docker build passed. A live lookup-only smoke for “Does Qwen have a 35b model?” returned exactly the Qwen3.5 and Qwen3.6 cards with deterministic full coverage in 34.7 ms.
