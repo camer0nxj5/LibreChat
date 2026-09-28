@@ -380,3 +380,18 @@ Files:
 - `LiteLLM-Config-CJ-Router/cj_router/test_sources.py`
 
 Validation: 30 router unit tests passed; a focused eager-preload loader regression test was added and the full LibreChat production Docker build passed. A live lookup-only smoke for “Does Qwen have a 35b model?” returned exactly the Qwen3.5 and Qwen3.6 cards with deterministic full coverage in 34.7 ms.
+
+### 2026-09-27: standard LibreChat artifacts for CJ/KB search
+
+The CJ Router search wrapper now emits the same model-content/artifact separation used by LibreChat's native web-search tool. Full reranked evidence remains in the model-facing tool content. The persisted `WEB_SEARCH` artifact retains the standard source contract used by citations and the Sources UI: `turn`, `organic`, the standard result collections, and `references`. Each organic source keeps `title`, `link`, a UI snippet capped at 500 characters, `content`, and `processed`.
+
+The wrapper no longer stores another full copy of every evidence item in `organic[].highlights`, and it no longer embeds the nonstandard `cjRouterTiming` or `cjRouterKbCards` audit payloads in conversation artifacts. LibreChat's native formatter similarly consumes highlights for model content and removes them before returning its artifact. Detailed CJ search timings and KB coverage decisions remain available in the CJ Router central logs.
+
+This preserves citation chips, source links, expandable search results, and saved-conversation rendering while preventing custom artifact fields from multiplying the prompt-accounting footprint. Turn-level KB-card deduplication still ensures that cards preloaded for the original question or claimed by one concurrent search call are not returned again in that turn.
+
+Files:
+
+- `packages/api/src/tools/cjRouterWebSearch.ts`
+- `packages/api/src/tools/cjRouterWebSearch.spec.ts`
+
+Validation: the full production Docker build passed, including declaration generation for `@librechat/api`. A compiled-image smoke test verified complete model-facing evidence, standard citation references, a 500-character artifact snippet, and absence of duplicate `highlights` and embedded CJ audit payloads.

@@ -1,8 +1,44 @@
 import {
+  buildCJRouterStandardSearchResult,
   buildCJRouterRequiredSearchContext,
   isCJRouterReferentialFollowup,
   resolveCJRouterSearchIntent,
 } from './cjRouterWebSearch';
+
+describe('CJ Router standard search artifact', () => {
+  it('matches LibreChat source fields without persisting duplicate highlights', () => {
+    const evidence = `Decisive evidence ${'x'.repeat(700)}`;
+    const { content, data } = buildCJRouterStandardSearchResult(
+      [
+        {
+          title: 'Official source',
+          url: 'https://example.com/docs',
+          content: evidence,
+          rerank_score: 0.99,
+        },
+      ],
+      3,
+    );
+
+    expect(content).toContain(evidence);
+    expect(content).toContain('\ue202turn3search0');
+    expect(data.organic[0]).toEqual(
+      expect.objectContaining({
+        title: 'Official source',
+        link: 'https://example.com/docs',
+        content: evidence,
+        processed: true,
+      }),
+    );
+    expect(data.organic[0].snippet.length).toBeLessThanOrEqual(500);
+    expect(data.organic[0]).not.toHaveProperty('highlights');
+    expect(data).not.toHaveProperty('cjRouterTiming');
+    expect(data).not.toHaveProperty('cjRouterKbCards');
+    expect(data.references).toEqual([
+      { link: 'https://example.com/docs', title: 'Official source', type: 'link' },
+    ]);
+  });
+});
 
 describe('CJ Router search-intent policy', () => {
   it('requires web search for an explicit search request', () => {

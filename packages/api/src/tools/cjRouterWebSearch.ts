@@ -28,6 +28,80 @@ type CJSearchResponse = {
   error?: { message?: string };
 };
 
+const ARTIFACT_SNIPPET_MAX_CHARS = 500;
+
+export type CJRouterArtifactSource = {
+  title: string;
+  link: string;
+  snippet: string;
+  content: string;
+  processed: boolean;
+};
+
+export type CJRouterStandardSearchResult = {
+  content: string;
+  data: {
+    turn: number;
+    organic: CJRouterArtifactSource[];
+    topStories: never[];
+    images: never[];
+    videos: never[];
+    news: never[];
+    relatedSearches: never[];
+    references: Array<{ link: string; title: string; type: 'link' }>;
+  };
+};
+
+/**
+ * Shape CJ Router results like LibreChat's standard web-search artifact.
+ *
+ * The model-facing evidence remains separate. The persisted WEB_SEARCH
+ * artifact keeps the source fields used by LibreChat's citations and source
+ * panels, but does not repeat the same evidence again in `highlights`.
+ * LibreChat's standard formatter likewise consumes highlights for the model
+ * and removes them before returning the artifact.
+ */
+export function buildCJRouterStandardSearchResult(
+  results: SearchResult[],
+  turn: number,
+): CJRouterStandardSearchResult {
+  const organic = results.map((result) => {
+    const content = result.content ?? '';
+    const snippet =
+      content.length > ARTIFACT_SNIPPET_MAX_CHARS
+        ? `${content.slice(0, ARTIFACT_SNIPPET_MAX_CHARS - 1).trimEnd()}…`
+        : content;
+    return {
+      title: result.title ?? result.url,
+      link: result.url,
+      snippet,
+      content,
+      processed: true,
+    };
+  });
+  const data = {
+    turn,
+    organic,
+    topStories: [],
+    images: [],
+    videos: [],
+    news: [],
+    relatedSearches: [],
+    references: organic.map((result) => ({
+      link: result.link,
+      title: result.title,
+      type: 'link' as const,
+    })),
+  };
+  const content = organic
+    .map(
+      (result, index) =>
+        `\ue202turn${turn}search${index}\nTitle: ${result.title}\nURL: ${result.link}\n${result.content}`,
+    )
+    .join('\n\n');
+  return { content, data };
+}
+
 type SearchCallbacks = {
   onSearchResults?: (
     result: { success: boolean; data: Record<string, unknown> },
@@ -216,45 +290,16 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
           payload.kb_cards.new_card_ids = Array.from(deliveredCardIds);
           payload.kb_cards.cards_pinned_before_web = deliveredCardIds.size > 0;
         }
-        const organic = deduplicatedResults.map((result) => ({
-          title: result.title ?? result.url,
-          link: result.url,
-          snippet: result.content,
-          content: result.content,
-          processed: true,
-          highlights: [{ text: result.content, score: result.rerank_score ?? 0 }],
-        }));
         const turn = Number(runnableConfig?.configurable?.turn ?? 0);
-        const data = {
-          turn,
-          organic,
-          topStories: [],
-          images: [],
-          videos: [],
-          news: [],
-          relatedSearches: [],
-          references: organic.map((result) => ({
-            link: result.link,
-            title: result.title,
-            type: 'link',
-          })),
-          cjRouterTiming: payload.timing,
-          cjRouterKbCards: payload.kb_cards,
-        };
+        const { content, data } = buildCJRouterStandardSearchResult(deduplicatedResults, turn);
         await config.onSearchResults?.({ success: true, data }, runnableConfig);
-        const content = organic
-          .map(
-            (result, index) =>
-              `\ue202turn${turn}search${index}\nTitle: ${result.title}\nURL: ${result.link}\n${result.content}`,
-          )
-          .join('\n\n');
         return [
           content || 'No relevant web results were returned.',
           {
             [Constants.WEB_SEARCH]: data,
             outcome: payload.kb_cards?.web_search_cancelled
               ? `Returned ${payload.kb_cards.card_ids?.length ?? 0} verified KB card(s); web search was cancelled because newly available cards fully covered the request.`
-              : `Returned ${organic.length} evidence items${config.useKbCards ? ' (verified KB cards pinned first when relevant)' : ''} from ${searchMode} search for: ${queries.join(' | ')}`,
+              : `Returned ${deduplicatedResults.length} evidence items${config.useKbCards ? ' (verified KB cards pinned first when relevant)' : ''} from ${searchMode} search for: ${queries.join(' | ')}`,
           },
         ];
       } catch (error) {
