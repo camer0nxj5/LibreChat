@@ -398,3 +398,21 @@ Validation: the full production Docker build passed, including declaration gener
 ### CJ Router search content/artifact contract
 
 The custom CJ Router `web_search` tool must import `Constants` from `@librechat/agents`. In particular, `Constants.CONTENT_AND_ARTIFACT` and `Constants.WEB_SEARCH` are not exported by `librechat-data-provider`. Importing them from the data-provider package silently makes both values `undefined`; LangChain then serializes the full `[content, artifact]` tuple into model-visible tool history under an `undefined` artifact key. That bloats prompts and can make later turns fail with provider HTTP 400 errors. A regression test asserts that the tool's `responseFormat` is exactly `content_and_artifact`.
+
+
+### 2026-09-27: portable historical tool replay protection
+
+Agent conversations can contain historical assistant tool calls and tool-result messages that were valid when originally produced but are not portable to a later provider request. LibreChat fallback call IDs such as `web_search_4`, empty or duplicate IDs, orphaned results, and missing results now trigger a provider-bound replay projection before the next run.
+
+The projection omits historical assistant tool-call records and tool-result records from the request sent to the model while retaining every user turn and completed assistant answer. MongoDB messages, web-search artifacts, citations, and the Sources UI are unchanged. Current-turn tools remain available, so the model can search again if the retained answer does not cover the follow-up. Valid provider-native tool histories remain unchanged.
+
+The guard also applies to the memory-processing transcript. It logs only structural counts (calls, results, fallback/empty/duplicate/orphan/missing IDs, and omitted message count) plus the conversation ID; it never logs prompt or search-result content.
+
+Files:
+
+- `packages/api/src/agents/replay.ts`
+- `packages/api/src/agents/replay.spec.ts`
+- `packages/api/src/agents/index.ts`
+- `api/server/controllers/agents/client.js`
+
+Validation: five focused regressions pass, including the observed topology of four provider-native calls followed by two LibreChat fallback-ID calls. The full API typecheck reports no error in the new replay module; two pre-existing fork errors remain in `packages/api/src/agents/run.ts` and `packages/api/src/tools/cjRouterWebSearch.ts`.

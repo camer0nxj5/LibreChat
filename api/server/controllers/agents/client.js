@@ -161,6 +161,7 @@ const {
   normalizeAgentEventActorDiscoveredTools,
   createCompactionSemanticIndexProjection,
   restoreCompactionSemanticIndexSnapshot,
+  projectPortableToolReplay,
   MAX_AGENT_CONTEXT_SKILLS,
   isAgentFadingTier,
   isAgentFadingTierEntries,
@@ -4648,6 +4649,21 @@ class AgentClient extends BaseClient {
         skillPrimeResult?.skills,
         formatOptions,
       );
+      const replayProjection = projectPortableToolReplay(initialMessages);
+      if (replayProjection.projected) {
+        initialMessages = replayProjection.messages;
+        indexTokenCountMap = undefined;
+        logger.warn('[AgentClient] Projected non-portable historical tool replay', {
+          conversationId: this.conversationId,
+          omittedMessages: replayProjection.omittedMessages,
+          ...replayProjection.audit,
+        });
+      } else if (replayProjection.audit.callCount > 0) {
+        logger.debug('[AgentClient] Historical tool replay audit', {
+          conversationId: this.conversationId,
+          ...replayProjection.audit,
+        });
+      }
       if (this.eventActorContinuation !== 'warm') {
         this.eventActorSummary = initialSummary;
       }
@@ -4733,12 +4749,14 @@ class AgentClient extends BaseClient {
 
       const memoryMessages =
         this.processMemory && this.memoryPayload && !isCompactionTurn
-          ? formatAgentMessages(
-              stripActivityLabelParts(this.memoryPayload),
-              undefined,
-              toolSet,
-              skillPrimeResult?.skills,
-              hasMessageFormatOptions ? messageFormatOptions : undefined,
+          ? projectPortableToolReplay(
+              formatAgentMessages(
+                stripActivityLabelParts(this.memoryPayload),
+                undefined,
+                toolSet,
+                skillPrimeResult?.skills,
+                hasMessageFormatOptions ? messageFormatOptions : undefined,
+              ).messages,
             ).messages
           : initialMessages;
 
