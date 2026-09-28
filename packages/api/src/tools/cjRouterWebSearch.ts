@@ -8,6 +8,7 @@ type SearchResult = {
   content: string;
   rerank_score?: number;
   kb_answer_card?: boolean;
+  kb_card_id?: string;
 };
 
 type CJSearchResponse = {
@@ -41,6 +42,7 @@ type CJRouterSearchConfig = SearchCallbacks & {
   searchMode?: 'basic' | 'advanced';
   useKbCards?: boolean;
   originalIntent?: string;
+  initialCardIds?: string[];
 };
 
 const EXPLICIT_WEB_SEARCH_PATTERN =
@@ -155,7 +157,7 @@ export async function preloadCJRouterKbCards(config: {
 
 export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnType<typeof tool> {
   let searchRound = 0;
-  const returnedCardIds = new Set<string>();
+  const returnedCardIds = new Set<string>(config.initialCardIds ?? []);
   const searchMode = config.searchMode === 'basic' ? 'basic' : 'advanced';
   return tool(
     async (
@@ -191,10 +193,30 @@ export function createCJRouterSearchTool(config: CJRouterSearchConfig): ReturnTy
         if (!response.ok || !payload.success) {
           throw new Error(payload.error?.message ?? `CJ Router search failed (${response.status})`);
         }
+        /** Concurrent calls share this set. Claim each returned card after the
+         * response so only the first completed call can expose it. Cards in
+         * the eager preload are seeded above and never repeated in a search. */
+        const deliveredCardIds = new Set<string>();
+        const deduplicatedResults = (payload.results ?? []).filter((result) => {
+          if (result.kb_answer_card !== true) {
+            return true;
+          }
+          const cardId = result.kb_card_id;
+          if (!cardId || returnedCardIds.has(cardId)) {
+            return false;
+          }
+          returnedCardIds.add(cardId);
+          deliveredCardIds.add(cardId);
+          return true;
+        });
         for (const cardId of payload.kb_cards?.card_ids ?? []) {
           returnedCardIds.add(cardId);
         }
-        const organic = (payload.results ?? []).map((result) => ({
+        if (payload.kb_cards) {
+          payload.kb_cards.new_card_ids = Array.from(deliveredCardIds);
+          payload.kb_cards.cards_pinned_before_web = deliveredCardIds.size > 0;
+        }
+        const organic = deduplicatedResults.map((result) => ({
           title: result.title ?? result.url,
           link: result.url,
           snippet: result.content,
