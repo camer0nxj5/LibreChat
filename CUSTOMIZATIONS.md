@@ -395,3 +395,6 @@ Files:
 - `packages/api/src/tools/cjRouterWebSearch.spec.ts`
 
 Validation: the full production Docker build passed, including declaration generation for `@librechat/api`. A compiled-image smoke test verified complete model-facing evidence, standard citation references, a 500-character artifact snippet, and absence of duplicate `highlights` and embedded CJ audit payloads.
+### CJ Router search content/artifact contract
+
+The custom CJ Router `web_search` tool must import `Constants` from `@librechat/agents`. In particular, `Constants.CONTENT_AND_ARTIFACT` and `Constants.WEB_SEARCH` are not exported by `librechat-data-provider`. Importing them from the data-provider package silently makes both values `undefined`; LangChain then serializes the full `[content, artifact]` tuple into model-visible tool history under an `undefined` artifact key. That bloats prompts and can make later turns fail with provider HTTP 400 errors. A regression test asserts that the tool's `responseFormat` is exactly `content_and_artifact`.

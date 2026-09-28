@@ -3,6 +3,7 @@ import {
   buildCJRouterRequiredSearchContext,
   isCJRouterReferentialFollowup,
   resolveCJRouterSearchIntent,
+  createCJRouterSearchTool,
 } from './cjRouterWebSearch';
 
 describe('CJ Router standard search artifact', () => {
@@ -37,6 +38,16 @@ describe('CJ Router standard search artifact', () => {
     expect(data.references).toEqual([
       { link: 'https://example.com/docs', title: 'Official source', type: 'link' },
     ]);
+  });
+});
+
+describe('CJ Router tool response contract', () => {
+  it('uses LangChain content-and-artifact separation', () => {
+    const searchTool = createCJRouterSearchTool({
+      apiUrl: 'http://127.0.0.1:1/search',
+    });
+
+    expect(searchTool.responseFormat).toBe('content_and_artifact');
   });
 });
 

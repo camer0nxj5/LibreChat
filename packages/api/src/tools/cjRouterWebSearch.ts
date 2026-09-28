@@ -1,6 +1,6 @@
 import { tool } from '@langchain/core/tools';
 import type { RunnableConfig } from '@langchain/core/runnables';
-import { Constants } from 'librechat-data-provider';
+import { Constants } from '@librechat/agents';
 
 type SearchResult = {
   title?: string;
