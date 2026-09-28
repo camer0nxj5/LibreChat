@@ -1273,6 +1273,7 @@ export async function initializeAgent(
 
   const { resendFiles, maxContextTokens, imageDetail, modelOptions } = extractLibreChatParams(
     _modelOptions as Record<string, unknown>,
+    endpointOption?.customParams?.paramDefinitions,
   );
 
   const provider = agent.provider;

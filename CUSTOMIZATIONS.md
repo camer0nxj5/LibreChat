@@ -416,3 +416,19 @@ Files:
 - `api/server/controllers/agents/client.js`
 
 Validation: five focused regressions pass, including the observed topology of four provider-native calls followed by two LibreChat fallback-ID calls. The full API typecheck reports no error in the new replay module; two pre-existing fork errors remain in `packages/api/src/agents/run.ts` and `packages/api/src/tools/cjRouterWebSearch.ts`.
+
+### 2026-09-27: model-scoped parameter validation
+
+Conversation objects survive endpoint/model changes, so a shared control such as `reasoning_effort` could retain a value selected for the previous model. This caused repeatable provider HTTP 400 errors after a Kimi conversation was switched to Fireworks DeepSeek or GPT: the stored value was `minimal`, while Fireworks DeepSeek accepts `low`, `medium`, `high`, `xhigh`, `max`, `none`, or `adaptive`. A synthetic request to the same Fireworks model returned 200 without the field and 400 with `reasoning_effort: minimal`.
+
+The parameter panel now clears the previous model's overlapping parameter fields before restoring the target endpoint/model's saved record. It also removes persisted enum values that are outside the current control's declared options. The Fireworks endpoint declares its accepted reasoning choices explicitly. As defense in depth, agent initialization validates custom-endpoint enum parameters and drops stale unsupported values before constructing the provider request, so already-saved conversations and older clients recover without a database migration.
+
+Files:
+
+- `client/src/components/SidePanel/Parameters/Panel.tsx`
+- `packages/api/src/utils/llm.ts`
+- `packages/api/src/utils/llm.test.ts`
+- `packages/api/src/agents/initialize.ts`
+- `LibreChat-Config/librechat.yaml`
+
+Validation: the complete production Docker build passed; the deployed backend assertion removed `minimal` and preserved `low`; LibreChat parsed the updated config and returned HTTP 200. Deployed image: `sha256:e56b1c07e91249378cf2a13fdc86e8d66cd749a944a2e7109eae8ffe85b19782`.

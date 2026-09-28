@@ -19,6 +19,7 @@ type LibreChatParams = {
  */
 export function extractLibreChatParams(
   options?: DynamicSettingProps['conversation'],
+  parameterDefinitions: Array<{ key: string; type?: string; options?: string[] }> = [],
 ): LibreChatParams {
   if (!options) {
     return {
@@ -28,6 +29,23 @@ export function extractLibreChatParams(
   }
 
   const modelOptions = { ...options };
+
+  /** Custom endpoints can narrow an enum exposed by the shared OpenAI-style
+   * controls. Drop stale browser values that are outside the endpoint's declared
+   * options instead of forwarding a provider-invalid request. */
+  for (const definition of parameterDefinitions) {
+    if (
+      definition.type !== 'enum' ||
+      !Array.isArray(definition.options) ||
+      definition.options.length === 0
+    ) {
+      continue;
+    }
+    const value = modelOptions[definition.key as keyof typeof modelOptions];
+    if (value != null && !definition.options.includes(String(value))) {
+      delete modelOptions[definition.key as keyof typeof modelOptions];
+    }
+  }
 
   const resendFiles =
     (delete modelOptions.resendFiles, options.resendFiles) ??

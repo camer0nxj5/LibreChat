@@ -2,6 +2,39 @@ import { ImageDetail } from 'librechat-data-provider';
 import { extractLibreChatParams } from './llm';
 
 describe('extractLibreChatParams', () => {
+  it('drops a stale enum value excluded by custom endpoint parameter definitions', () => {
+    const result = extractLibreChatParams(
+      { model: 'deepseek-v4p1-flash', reasoning_effort: 'minimal' },
+      [
+        {
+          key: 'reasoning_effort',
+          type: 'enum',
+          options: ['', 'none', 'low', 'medium', 'high', 'xhigh', 'max'],
+        },
+      ],
+    );
+
+    expect(result.modelOptions).toEqual({ model: 'deepseek-v4p1-flash' });
+  });
+
+  it('keeps an enum value allowed by custom endpoint parameter definitions', () => {
+    const result = extractLibreChatParams(
+      { model: 'deepseek-v4p1-flash', reasoning_effort: 'low' },
+      [
+        {
+          key: 'reasoning_effort',
+          type: 'enum',
+          options: ['', 'none', 'low', 'medium', 'high', 'xhigh', 'max'],
+        },
+      ],
+    );
+
+    expect(result.modelOptions).toEqual({
+      model: 'deepseek-v4p1-flash',
+      reasoning_effort: 'low',
+    });
+  });
+
   it('should return defaults when options is undefined', () => {
     const result = extractLibreChatParams(undefined);
 

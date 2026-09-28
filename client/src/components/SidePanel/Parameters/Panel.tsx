@@ -28,6 +28,14 @@ const DISABLED_BY_THINKING_TOGGLE = new Set([
   'reasoning_context',
 ]);
 
+function isAllowedParameterValue(setting: SettingDefinition | undefined, value: unknown) {
+  if (!setting) return false;
+  if (setting.type !== 'enum' || !Array.isArray(setting.options) || setting.options.length === 0) {
+    return true;
+  }
+  return setting.options.includes(String(value));
+}
+
 export default function Parameters() {
   const localize = useLocalize();
   const { data: startupConfig } = useGetStartupConfig();
@@ -35,6 +43,7 @@ export default function Parameters() {
   const { announcePolite } = useLiveAnnouncer();
   const { setOption } = useSetIndexOptions();
   const appliedPreferenceRef = useRef('');
+  const previousPreferenceKeyRef = useRef('');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [preset, setPreset] = useState<TPreset | null>(null);
@@ -102,29 +111,79 @@ export default function Parameters() {
     () => new Set(parameters.filter(Boolean).map((setting) => setting.key)),
     [parameters],
   );
+  const parameterDefinitions = useMemo(
+    () => new Map(parameters.filter(Boolean).map((setting) => [setting.key, setting])),
+    [parameters],
+  );
+  const parameterValidationSignature = useMemo(
+    () =>
+      parameters
+        .filter(Boolean)
+        .map((setting) => `${setting.key}:${setting.type ?? ''}:${setting.options?.join(',') ?? ''}`)
+        .join('|'),
+    [parameters],
+  );
   const preferenceKey = useMemo(
     () => getModelParameterPreferenceKey(provider, model),
     [provider, model],
   );
-  const preferenceApplicationKey = `${conversation?.conversationId ?? 'new'}:${preferenceKey}`;
+  const preferenceApplicationKey = `${conversation?.conversationId ?? 'new'}:${preferenceKey}:${parameterValidationSignature}`;
   const thinkingDisabled = conversation?.disable_thinking === true;
 
   /** Apply the last values chosen for this endpoint/model whenever that model is
    *  opened in a different conversation. Invalid or obsolete parameter keys are ignored. */
   useEffect(() => {
     if (!preferenceKey || appliedPreferenceRef.current === preferenceApplicationKey) return;
+    const previousPreferenceKey = previousPreferenceKeyRef.current;
+    const modelChanged = previousPreferenceKey !== '' && previousPreferenceKey !== preferenceKey;
+    previousPreferenceKeyRef.current = preferenceKey;
     appliedPreferenceRef.current = preferenceApplicationKey;
     try {
       const parsed = JSON.parse(localStorage.getItem(preferenceKey) ?? '{}') as Record<
         string,
         unknown
       >;
+      let cleanedStoredPreference = false;
+      for (const [key, value] of Object.entries(parsed)) {
+        if (isAllowedParameterValue(parameterDefinitions.get(key), value)) continue;
+        delete parsed[key];
+        cleanedStoredPreference = true;
+      }
+      if (cleanedStoredPreference) {
+        localStorage.setItem(preferenceKey, JSON.stringify(parsed));
+      }
       setConversation((prev) => {
         if (!prev) return prev;
         let changed = false;
         const next = { ...prev };
+        /** A conversation object survives provider/model switches. Clear the
+         *  previous model's overlapping controls before restoring the target
+         *  model's own saved values, otherwise values such as `minimal` can
+         *  leak into a provider that only accepts `low`. */
+        if (modelChanged) {
+          for (const key of parameterKeys) {
+            if (next[key] === undefined) continue;
+            delete next[key];
+            changed = true;
+          }
+        }
+        for (const key of parameterKeys) {
+          if (
+            next[key] !== undefined &&
+            !isAllowedParameterValue(parameterDefinitions.get(key), next[key])
+          ) {
+            delete next[key];
+            changed = true;
+          }
+        }
         for (const [key, value] of Object.entries(parsed)) {
-          if (!parameterKeys.has(key) || Object.is(next[key], value)) continue;
+          if (
+            !parameterKeys.has(key) ||
+            !isAllowedParameterValue(parameterDefinitions.get(key), value) ||
+            Object.is(next[key], value)
+          ) {
+            continue;
+          }
           next[key] = value;
           changed = true;
         }
@@ -133,7 +192,13 @@ export default function Parameters() {
     } catch (error) {
       logger.warn('parameters', 'Unable to restore model parameter preferences:', error);
     }
-  }, [parameterKeys, preferenceApplicationKey, preferenceKey, setConversation]);
+  }, [
+    parameterDefinitions,
+    parameterKeys,
+    preferenceApplicationKey,
+    preferenceKey,
+    setConversation,
+  ]);
 
   const setPersistentOption = useCallback(
     (param: string) => (newValue: unknown) => {
