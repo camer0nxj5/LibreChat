@@ -431,4 +431,17 @@ Files:
 - `packages/api/src/agents/initialize.ts`
 - `LibreChat-Config/librechat.yaml`
 
-Validation: the complete production Docker build passed; the deployed backend assertion removed `minimal` and preserved `low`; LibreChat parsed the updated config and returned HTTP 200. Deployed image: `sha256:e56b1c07e91249378cf2a13fdc86e8d66cd749a944a2e7109eae8ffe85b19782`.
+The initial backend guard was wired to `endpointOption.customParams`, but the
+agents route's public endpoint option does not carry a custom provider's
+parameter definitions. The helper therefore worked in isolation while the live
+request still forwarded `minimal`. Agent initialization now resolves the custom
+provider before parameter extraction, passes
+`customEndpointConfig.customParams.paramDefinitions`, and reuses that same
+provider resolution for request construction. A regression at the initializer
+boundary asserts that a Fireworks-style custom endpoint's enum definitions reach
+the extractor.
+
+Validation: the complete production Docker build passed; a deployed assertion
+resolved Fireworks from the mounted `librechat.yaml`, removed `minimal`, and
+preserved `low`. LibreChat returned HTTP 200. Corrected deployed image:
+`sha256:074872f7d08568adeddfe8efe33d197f222c0c52588f8a905dbea04d43e2f2f6`.

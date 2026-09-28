@@ -1263,6 +1263,17 @@ export async function initializeAgent(
 
   let currentFiles: Array<IMongoFile | TFile> | undefined;
 
+  const provider = agent.provider;
+
+  /** Resolve custom endpoint metadata before separating LibreChat parameters.
+   * Parameter validation depends on the resolved endpoint config, while
+   * `endpointOption` describes the public agents endpoint and does not carry
+   * custom provider definitions. */
+  const resolvedProviderConfig = getProviderConfig({
+    provider,
+    appConfig,
+  });
+
   const _modelOptions = structuredClone(
     Object.assign(
       { model: agent.model },
@@ -1273,10 +1284,9 @@ export async function initializeAgent(
 
   const { resendFiles, maxContextTokens, imageDetail, modelOptions } = extractLibreChatParams(
     _modelOptions as Record<string, unknown>,
-    endpointOption?.customParams?.paramDefinitions,
+    resolvedProviderConfig.customEndpointConfig?.customParams?.paramDefinitions,
   );
 
-  const provider = agent.provider;
   agent.endpoint = provider;
 
   /** Resolve the per-agent Code API route before resource/tool priming. A
@@ -1909,10 +1919,7 @@ export async function initializeAgent(
     }
   }
 
-  const { getOptions, overrideProvider, customEndpointConfig } = getProviderConfig({
-    provider,
-    appConfig,
-  });
+  const { getOptions, overrideProvider, customEndpointConfig } = resolvedProviderConfig;
   if (overrideProvider !== agent.provider) {
     agent.provider = overrideProvider;
   }

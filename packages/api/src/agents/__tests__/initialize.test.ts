@@ -158,6 +158,11 @@ function createMocks(overrides?: {
   endpointTokenConfig?: EndpointTokenConfig;
   useRealTokenLookup?: boolean;
   providerTools?: unknown[];
+  customEndpointConfig?: {
+    customParams?: {
+      paramDefinitions?: Array<{ key: string; type?: string; options?: string[] }>;
+    };
+  };
   loadedToolDefinitions?: Array<{
     name: string;
     description?: string;
@@ -175,6 +180,7 @@ function createMocks(overrides?: {
     endpointTokenConfig,
     useRealTokenLookup = false,
     providerTools,
+    customEndpointConfig,
     loadedToolDefinitions = [],
     structuredTools = [],
   } = overrides ?? {};
@@ -205,6 +211,7 @@ function createMocks(overrides?: {
   mockGetProviderConfig.mockReturnValue({
     getOptions: mockGetOptions,
     overrideProvider: resolvedOverrideProvider,
+    customEndpointConfig,
   });
 
   mockExtractLibreChatParams.mockReturnValue({
@@ -835,6 +842,47 @@ describe('initializeAgent — custom provider token lookup', () => {
     // optionalChainWithEmptyCheck → Math.max formula. The toHaveBeenCalledWith
     // assertion above catches the actual provider-resolution regression.
     expect(result.maxContextTokens).toBe(Math.round((65536 - 4096) * 0.95));
+  });
+});
+
+describe('initializeAgent — custom provider parameter validation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('passes resolved custom endpoint enum definitions to parameter extraction', async () => {
+    const paramDefinitions = [
+      {
+        key: 'reasoning_effort',
+        type: 'enum',
+        options: ['', 'none', 'low', 'medium', 'high', 'xhigh', 'max'],
+      },
+    ];
+    const { agent, req, res, loadTools, db } = createMocks({
+      provider: 'Fireworks',
+      overrideProvider: Providers.OPENAI,
+      customEndpointConfig: {
+        customParams: { paramDefinitions },
+      },
+    });
+
+    await initializeAgent(
+      {
+        req,
+        res,
+        agent,
+        loadTools,
+        endpointOption: { endpoint: EModelEndpoint.agents },
+        allowedProviders: new Set(['Fireworks']),
+        isInitialAgent: true,
+      },
+      db,
+    );
+
+    expect(mockExtractLibreChatParams).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'test-model' }),
+      paramDefinitions,
+    );
   });
 });
 
