@@ -445,3 +445,28 @@ Validation: the complete production Docker build passed; a deployed assertion
 resolved Fireworks from the mounted `librechat.yaml`, removed `minimal`, and
 preserved `low`. LibreChat returned HTTP 200. Corrected deployed image:
 `sha256:074872f7d08568adeddfe8efe33d197f222c0c52588f8a905dbea04d43e2f2f6`.
+
+### 2026-09-29: lossless native web-highlight consolidation
+
+LibreChat's native Tavily search can return identical or overlapping expanded
+highlights from one page, and separate search calls can rediscover the same URL
+and excerpt. The model-facing native search result is now consolidated before
+it becomes a tool message. Exact excerpts are compared after whitespace
+normalization. Literal suffix/prefix overlaps are joined into one longer
+excerpt by retaining the shared text once and appending the novel portion.
+Containment keeps the longer excerpt. The merger requires a conservative
+literal overlap of at least six tokens and 48 characters; ambiguous or merely
+semantic similarity is preserved as separate evidence so no facts are lost.
+
+A turn-scoped URL/excerpt set also removes exact repeats from concurrent or
+later native search calls in the same run. URL fragments and common tracking
+parameters are ignored for identity. Distinct excerpts from one page remain,
+and the original search artifact is unchanged, preserving citation chips,
+source panels, and saved-conversation rendering. Structural logs report only
+counts and character savings, never evidence text.
+
+Files:
+
+- `api/app/clients/tools/util/webSearchEvidence.js`
+- `api/app/clients/tools/util/webSearchEvidence.test.js`
+- `api/app/clients/tools/util/handleTools.js`

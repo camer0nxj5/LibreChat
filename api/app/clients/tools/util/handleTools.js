@@ -66,6 +66,10 @@ const {
 const { getMCPRequestContext } = require('~/server/services/MCPRequestContext');
 const { createOpenIDSessionTokenProvider } = require('~/server/services/OpenIDSessionRefresh');
 const { createFileSearchTool, primeFiles: primeSearchFiles } = require('./fileSearch');
+const {
+  createWebSearchEvidenceState,
+  wrapNativeWebSearchTool,
+} = require('./webSearchEvidence');
 const { primeFiles: primeCodeFiles } = require('~/server/services/Files/Code/process');
 const { getUserPluginAuthValue } = require('~/server/services/PluginService');
 const { loadAuthValues } = require('~/server/services/Tools/credentials');
@@ -269,6 +273,9 @@ const loadTools = async ({
   };
 
   const requestedTools = {};
+  /** Shared for this agent run so repeated native-search excerpts are not
+   * sent to the model again on concurrent or later search calls. */
+  const webSearchEvidenceState = createWebSearchEvidenceState();
   const hasMCPTools = tools.some((toolName) => toolName && mcpToolPattern.test(toolName));
   const mcpPermissionContext =
     options.mcpPermissionContext ?? createMCPPermissionContext(options.req);
@@ -545,14 +552,18 @@ const loadTools = async ({
       requestedTools[tool] = async () => {
         toolContextMap[tool] = buildWebSearchContext();
         dynamicToolContextMap[tool] = buildWebSearchDynamicContext(options.req?.turnStartedAt);
-        return createSearchTool({
-          ...result.authResult,
-          httpAgent,
-          httpsAgent,
-          onSearchResults,
-          onGetHighlights,
+        return wrapNativeWebSearchTool(
+          createSearchTool({
+            ...result.authResult,
+            httpAgent,
+            httpsAgent,
+            onSearchResults,
+            onGetHighlights,
+            logger,
+          }),
+          webSearchEvidenceState,
           logger,
-        });
+        );
       };
       continue;
     } else if (tool === ASK_USER_QUESTION_TOOL_NAME) {
