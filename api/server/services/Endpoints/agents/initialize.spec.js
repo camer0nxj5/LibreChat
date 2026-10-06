@@ -655,7 +655,8 @@ describe('initializeClient — processAgent ACL gate', () => {
         endpointOption: makeEndpointOption(),
       });
 
-      expect(getModelsConfig).toHaveBeenCalledWith(req);
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(getModelsConfig).toHaveBeenCalledWith(req, ['openai']);
       expect(canCreateSkillSpy).toHaveBeenCalledWith({ req });
 
       models.resolve({});

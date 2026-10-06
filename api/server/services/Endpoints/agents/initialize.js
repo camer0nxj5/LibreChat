@@ -9,6 +9,7 @@ const {
   initializeAgent,
   primeInvokedSkillsForProfiles,
   validateAgentModel,
+  createGenerationModelLoader,
   extractManualSkills,
   GenerationJobManager,
   getCustomEndpointConfig,
@@ -328,27 +329,28 @@ const initializeClient = async ({
     }),
   );
   const primaryAgentPromise = endpointOption.agent;
-  const modelsConfigPromise = getModelsConfig(req);
-  const validatedPrimaryAgentPromise = Promise.all([primaryAgentPromise, modelsConfigPromise]).then(
-    async ([primaryAgent, modelsConfig]) => {
-      if (!primaryAgent) {
-        throw new Error('Agent not found');
-      }
-
-      const validationResult = await validateAgentModel({
-        req,
-        res,
-        modelsConfig,
-        logViolation,
-        agent: primaryAgent,
-      });
-      if (!validationResult.isValid) {
-        throw new Error(validationResult.error?.message);
-      }
-
-      return { primaryAgent, modelsConfig };
-    },
+  const loadModelCatalog = createGenerationModelLoader((providers) =>
+    getModelsConfig(req, providers),
   );
+  const validatedPrimaryAgentPromise = primaryAgentPromise.then(async (primaryAgent) => {
+    if (!primaryAgent) {
+      throw new Error('Agent not found');
+    }
+
+    const modelsConfig = await loadModelCatalog(primaryAgent.provider);
+    const validationResult = await validateAgentModel({
+      req,
+      res,
+      modelsConfig,
+      logViolation,
+      agent: primaryAgent,
+    });
+    if (!validationResult.isValid) {
+      throw new Error(validationResult.error?.message);
+    }
+
+    return { primaryAgent, modelsConfig };
+  });
 
   /**
    * Agent context store - populated after initialization, accessed by callback via closure.
@@ -765,6 +767,7 @@ const initializeClient = async ({
       endpointOption,
       allowedProviders,
       modelsConfig,
+      loadModelCatalog,
       loadTools,
       requestFiles,
       conversationId,
@@ -861,6 +864,7 @@ const initializeClient = async ({
     loadTools,
     logViolation,
     modelsConfig,
+    loadModelCatalog,
     requestFiles,
     agentConfigs,
     primaryAgent,
@@ -1223,7 +1227,9 @@ const initializeClient = async ({
       throw new Error(`You no longer have access to subagent ${agentId}.`);
     }
     const validation = await waitForAbort(
-      validateAgentModel({ req, res, agent, modelsConfig, logViolation }),
+      loadModelCatalog(agent.provider).then((catalog) =>
+        validateAgentModel({ req, res, agent, modelsConfig: catalog, logViolation }),
+      ),
       context.signal,
     );
     throwIfAborted(context.signal);

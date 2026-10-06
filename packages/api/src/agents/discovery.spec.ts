@@ -84,6 +84,41 @@ describe('discoverConnectedAgents', () => {
     expect(result.skippedAgentIds.size).toBe(0);
   });
 
+  it.each([true, false])(
+    'loads an authorized handoff provider catalog only after VIEW access (%s)',
+    async (hasAccess) => {
+      const target = { ...makeAgent('B'), provider: 'OpenClaw', model: 'remote' };
+      const catalog = { openclaw: ['remote'] };
+      const loadModelCatalog = jest.fn().mockResolvedValue(catalog);
+      await discoverConnectedAgents(
+        {
+          req: makeReq(),
+          res: makeRes(),
+          primaryConfig: makeConfig('A', [{ from: 'A', to: 'B', edgeType: 'handoff' }]),
+          allowedProviders: new Set(),
+          modelsConfig: {},
+          loadModelCatalog,
+          loadTools: jest.fn(),
+        },
+        {
+          getAgent: jest.fn().mockResolvedValue(target),
+          checkPermission: jest.fn().mockResolvedValue(hasAccess),
+          logViolation: jest.fn(),
+          db: {} as never,
+        },
+      );
+      if (hasAccess) {
+        expect(loadModelCatalog).toHaveBeenCalledWith('OpenClaw');
+        expect(mockValidateAgentModel).toHaveBeenCalledWith(
+          expect.objectContaining({ agent: target, modelsConfig: catalog }),
+        );
+      } else {
+        expect(loadModelCatalog).not.toHaveBeenCalled();
+        expect(mockValidateAgentModel).not.toHaveBeenCalled();
+      }
+    },
+  );
+
   it('discovers handoff targets via BFS across a multi-hop chain A -> B -> C', async () => {
     const edgesAB: GraphEdge[] = [{ from: 'A', to: 'B', edgeType: 'handoff' }];
     const edgesBC: GraphEdge[] = [{ from: 'B', to: 'C', edgeType: 'handoff' }];

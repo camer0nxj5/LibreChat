@@ -470,3 +470,24 @@ Files:
 - `api/app/clients/tools/util/webSearchEvidence.js`
 - `api/app/clients/tools/util/webSearchEvidence.test.js`
 - `api/app/clients/tools/util/handleTools.js`
+
+
+## Provider-scoped generation catalogs (2026-10-06)
+
+A NInfer turn previously waited five seconds for unrelated OpenClaw/CJ OpenClaw `/models` timeouts. Model validation now requests only the selected provider's catalog. Full `/api/models` discovery remains unchanged, including dynamic providers and their existing cache, user-key, tenant/header and URL protections. No YAML discovery flags were disabled.
+
+`getModelsConfig(req, providers?)` scopes loaders when supplied; omission means the full picker catalog. `createGenerationModelLoader` memoizes by provider within one request, never globally by user/model. Primary agents load their own catalog after agent resolution. Connected handoffs/graph agents load theirs after VIEW permission checks; lazy subagents and added conversations load their own catalog before existing validation. Legacy model middleware is scoped too. Validation and provider access restrictions remain authoritative.
+
+Implementation:
+- `packages/api/src/endpoints/config/models.ts`: filter custom endpoints before key resolution or fetch.
+- `packages/api/src/endpoints/config/defaults.ts`: injectable TypeScript default-catalog factory, migrated from the old JS loader; only invoke selected built-in integrations. Azure Assistants now uses the supported `azure`/`assistants` option pair instead of the old unrecognized `azureAssistants` property.
+- `packages/api/src/endpoints/config/scope.ts` and `index.ts`: scope helpers and exports.
+- `api/server/controllers/ModelController.js`, `api/server/services/Config/loadDefaultModels.js`: thin loader wiring.
+- `api/server/services/Endpoints/agents/{initialize,addedConvo}.js`, `api/server/controllers/agents/{openai,responses}.js`, `packages/api/src/agents/discovery.ts`: request-local catalogs across primary, connected, lazy and parallel agents.
+- `api/server/middleware/validateModel.js`: legacy generation validation.
+
+Regression coverage: `packages/api/src/endpoints/config/{scope,models}.spec.ts`, `packages/api/src/agents/{discovery,validation}.spec.ts`, `api/server/services/Endpoints/agents/{initialize,addedConvo}.spec.js`, existing `api/server/services/Config/loadConfigModels.spec.js` and `api/server/middleware/__tests__/validateModel.spec.js`. Verify configured-only NInfer skips all unrelated fetches, dynamic selected endpoints still discover, picker still discovers all, unauthorized handoffs never fetch, and invalid models remain rejected.
+
+Upgrade procedure: retain/reapply this commit on `cj-custom`; adapt the optional scoped loader API and callback to any upstream initializer/discovery refactor. Inspect every generation caller of `getModelsConfig`; only picker/config APIs should omit scope. Rebuild `@librechat/api` and the production image. Run these tests, `tsc --noEmit`, Lighthouse on an isolated port, and a live NInfer turn with unrelated discovery endpoints unavailable. Preserve existing customizations while rebasing; never replace the whole fork with an upstream image without these patches.
+
+Detailed source patch, pre-change baseline SHA, deployment/rollback images, check logs, and live verification are archived in the shared project at `latency-audit/librechat-scoped-catalog-20261006/`. The deployed backend-only image layer retains the previous frontend and dependencies; the canonical Dockerfile rebuild incorporates the committed source normally.

@@ -23,6 +23,7 @@ const {
   buildAgentContextAttachmentsByAgentId,
   createSafeUser,
   initializeAgent,
+  createGenerationModelLoader,
   loadSkillStates,
   getBalanceConfig,
   injectSkillPrimes,
@@ -916,7 +917,10 @@ const executeResponse = async (envelope, { req, res }) => {
         primaryConfig.subagents?.enabled === true &&
         (primaryConfig.subagents.graphs?.length ?? 0) > 0;
       if (primaryConfig.edges?.length || primaryHasGraphSubagents) {
-        const modelsConfig = await getModelsConfig(req);
+        const modelsConfig = {};
+        const loadModelCatalog = createGenerationModelLoader((providers) =>
+          getModelsConfig(req, providers),
+        );
         const discoveryParams = {
           req,
           res,
@@ -924,6 +928,7 @@ const executeResponse = async (envelope, { req, res }) => {
           endpointOption,
           allowedProviders,
           modelsConfig,
+          loadModelCatalog,
           loadTools,
           requestFiles: [],
           conversationId,

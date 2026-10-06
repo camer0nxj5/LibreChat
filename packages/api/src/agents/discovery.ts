@@ -65,6 +65,8 @@ export interface DiscoverConnectedAgentsParams {
   endpointOption?: Partial<TEndpointOption>;
   allowedProviders: Set<string>;
   modelsConfig: TModelsConfig;
+  /** Load only this authorized agent's provider catalog before model validation. */
+  loadModelCatalog?: (provider: string) => Promise<TModelsConfig>;
   loadTools: InitializeAgentParams['loadTools'];
   requestFiles?: InitializeAgentParams['requestFiles'];
   conversationId?: string | null;
@@ -227,7 +229,9 @@ async function initializeReferencedAgent(
     req: params.req,
     res: params.res,
     agent,
-    modelsConfig: params.modelsConfig,
+    modelsConfig: params.loadModelCatalog
+      ? await params.loadModelCatalog(agent.provider)
+      : params.modelsConfig,
     logViolation: deps.logViolation,
   });
   if (!validation.isValid) {

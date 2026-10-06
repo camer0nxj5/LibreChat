@@ -54,7 +54,10 @@ export interface LoadConfigModelsDeps {
 export function createLoadConfigModels(deps: LoadConfigModelsDeps) {
   const { getAppConfig, getUserKeyValues, fetchModels = defaultFetchModels } = deps;
 
-  return async function loadConfigModels(req: ServerRequest): Promise<TModelsConfig> {
+  return async function loadConfigModels(
+    req: ServerRequest,
+    providers?: string[],
+  ): Promise<TModelsConfig> {
     const appConfig = req.config ?? (await getAppConfig(getAppConfigOptionsFromUser(req.user)));
     if (!appConfig) {
       return {};
@@ -83,6 +86,10 @@ export function createLoadConfigModels(deps: LoadConfigModelsDeps) {
 
     const customEndpoints = (appConfig.endpoints[EModelEndpoint.custom] as TEndpoint[]).filter(
       (endpoint) =>
+        (!providers ||
+          providers.some(
+            (provider) => normalizeEndpointName(provider) === normalizeEndpointName(endpoint.name),
+          )) &&
         endpoint.baseURL &&
         endpoint.apiKey &&
         endpoint.name &&

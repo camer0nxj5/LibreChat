@@ -297,3 +297,59 @@ describe('createLoadConfigModels – in-request fetch coalescing', () => {
     expect(fetchModels).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('provider-scoped custom model catalogs', () => {
+  const appConfig = {
+    endpoints: {
+      custom: [
+        {
+          name: 'Ubuntu NInfer',
+          baseURL: 'http://ubuntu/v1',
+          apiKey: 'local',
+          models: { default: ['qwen'], fetch: false },
+        },
+        {
+          name: 'OpenClaw',
+          baseURL: 'http://offline/v1',
+          apiKey: 'local',
+          models: { default: ['fallback'], fetch: true },
+        },
+      ],
+    },
+  };
+  const req = { user: { id: 'user' } } as ServerRequest;
+  it('uses the configured selected model without fetching other catalogs', async () => {
+    const fetchModels = jest.fn().mockResolvedValue(['remote']);
+    const load = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(appConfig),
+      getUserKeyValues: jest.fn(),
+      fetchModels,
+    });
+    const result = await load(req, ['Ubuntu NInfer']);
+    expect(Object.values(result)).toContainEqual(['qwen']);
+    expect(Object.values(result)).not.toContainEqual(['fallback']);
+    expect(fetchModels).not.toHaveBeenCalled();
+  });
+  it('preserves full discovery and selected dynamic discovery', async () => {
+    const fetchModels = jest.fn().mockResolvedValue(['remote']);
+    const load = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(appConfig),
+      getUserKeyValues: jest.fn(),
+      fetchModels,
+    });
+    await load(req);
+    await load(req, ['OpenClaw']);
+    expect(fetchModels).toHaveBeenCalledTimes(2);
+    expect(fetchModels.mock.calls.every(([args]) => args.name === 'OpenClaw')).toBe(true);
+  });
+  it('returns no custom catalog for an unconfigured provider', async () => {
+    const fetchModels = jest.fn();
+    const load = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(appConfig),
+      getUserKeyValues: jest.fn(),
+      fetchModels,
+    });
+    expect(await load(req, ['Missing'])).toEqual({});
+    expect(fetchModels).not.toHaveBeenCalled();
+  });
+});

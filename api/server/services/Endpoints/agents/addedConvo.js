@@ -73,6 +73,7 @@ const processAddedConvo = async ({
   res,
   endpointOption,
   modelsConfig,
+  loadModelCatalog,
   logViolation,
   loadTools,
   requestFiles,
@@ -119,7 +120,7 @@ const processAddedConvo = async ({
     const addedValidation = await validateAgentModel({
       req,
       res,
-      modelsConfig,
+      modelsConfig: loadModelCatalog ? await loadModelCatalog(addedAgent.provider) : modelsConfig,
       logViolation,
       agent: addedAgent,
     });

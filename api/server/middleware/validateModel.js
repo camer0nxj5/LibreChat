@@ -37,7 +37,7 @@ const validateModel = async (req, res, next) => {
     return next();
   }
 
-  const modelsConfig = await getModelsConfig(req);
+  const modelsConfig = await getModelsConfig(req, [endpoint]);
 
   if (!modelsConfig) {
     return handleError(res, { text: 'Models not loaded' });
