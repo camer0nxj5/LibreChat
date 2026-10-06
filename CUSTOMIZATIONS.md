@@ -494,7 +494,7 @@ Detailed source patch, pre-change baseline SHA, deployment/rollback images, chec
 
 ## Browser bundle version (2026-10-06)
 
-New-chat screens show a small right-aligned build label directly above the composer: `LibreChat v0.8.8-rc3 · CJ rev. 10/06/26 v.1`. It uses semantic `text-text-secondary` styling and stays in normal layout on mobile/desktop. Vite compiles the string from root `package.json` and `cj-revision.json`; it never fetches the server version, so cached bundles honestly retain their old label.
+New-chat screens show a small right-aligned build label directly above the composer: `LibreChat v0.8.8-rc3 · CJ rev. 10.06.26 v.2`. It uses semantic `text-text-secondary` styling and stays in normal layout on mobile/desktop. Vite compiles the string from root `package.json` and `cj-revision.json`; it never fetches the server version, so cached bundles honestly retain their old label.
 
 Before each new deployment revision run `npm run cj:revision` once, rebuild the frontend, and commit the updated metadata. The command increments on the same America/Los_Angeles date and resets to 1 on a new day. Do not increment during ordinary test or retry builds. Backend-only CJ deployments also require a bumped frontend rebuild to update the visible label. Preserve this workflow during upstream upgrades.
 

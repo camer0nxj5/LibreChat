@@ -16,7 +16,7 @@ const { date, revision } = JSON.parse(
   fs.readFileSync(path.join(rootDir, 'cj-revision.json'), 'utf8'),
 );
 const [year, month, day] = date.split('-');
-const cjBuildLabel = `LibreChat ${version} · CJ rev. ${month}/${day}/${year.slice(-2)} v.${revision}`;
+const cjBuildLabel = `LibreChat ${version} · CJ rev. ${month}.${day}.${year.slice(-2)} v.${revision}`;
 
 /**
  * vite-plugin-node-polyfills uses @rollup/plugin-inject to replace bare globals (e.g. `process`)

@@ -16,4 +16,4 @@ if (!Number.isSafeInteger(revision) || revision < 1) {
   throw new Error('Invalid CJ revision counter');
 }
 fs.writeFileSync(file, JSON.stringify({ date, revision }, null, 2) + '\n');
-console.log(`CJ rev. ${get('month')}/${get('day')}/${get('year').slice(-2)} v.${revision}`);
+console.log(`CJ rev. ${get('month')}.${get('day')}.${get('year').slice(-2)} v.${revision}`);
