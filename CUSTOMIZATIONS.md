@@ -491,3 +491,13 @@ Regression coverage: `packages/api/src/endpoints/config/{scope,models}.spec.ts`,
 Upgrade procedure: retain/reapply this commit on `cj-custom`; adapt the optional scoped loader API and callback to any upstream initializer/discovery refactor. Inspect every generation caller of `getModelsConfig`; only picker/config APIs should omit scope. Rebuild `@librechat/api` and the production image. Run these tests, `tsc --noEmit`, Lighthouse on an isolated port, and a live NInfer turn with unrelated discovery endpoints unavailable. Preserve existing customizations while rebasing; never replace the whole fork with an upstream image without these patches.
 
 Detailed source patch, pre-change baseline SHA, deployment/rollback images, check logs, and live verification are archived in the shared project at `latency-audit/librechat-scoped-catalog-20261006/`. The deployed backend-only image layer retains the previous frontend and dependencies; the canonical Dockerfile rebuild incorporates the committed source normally.
+
+## Browser bundle version (2026-10-06)
+
+New-chat screens show a small right-aligned build label directly above the composer: `LibreChat v0.8.8-rc3 · CJ rev. 10/06/26 v.1`. It uses semantic `text-text-secondary` styling and stays in normal layout on mobile/desktop. Vite compiles the string from root `package.json` and `cj-revision.json`; it never fetches the server version, so cached bundles honestly retain their old label.
+
+Before each new deployment revision run `npm run cj:revision` once, rebuild the frontend, and commit the updated metadata. The command increments on the same America/Los_Angeles date and resets to 1 on a new day. Do not increment during ordinary test or retry builds. Backend-only CJ deployments also require a bumped frontend rebuild to update the visible label. Preserve this workflow during upstream upgrades.
+
+Files: `cj-revision.json`, `scripts/bump-cj-revision.mjs`, root npm script, `client/vite.config.ts`, `client/src/vite-env.d.ts`, and `client/src/components/Chat/ChatView.tsx`.
+
+Validation: production client build passed; isolated authenticated 393×852 and 1440×900 new-chat checks verified exact label, visibility, composer placement and viewport containment. Client typecheck matched the unchanged baseline diagnostics exactly (no new errors). Audit artifacts and source patch live in the project brief workspace under `latency-audit/librechat-version-20261006/`.

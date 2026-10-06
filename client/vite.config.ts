@@ -10,6 +10,13 @@ import { compression, defineAlgorithm } from 'vite-plugin-compression2';
 import type { Plugin } from 'vite';
 
 const require = createRequire(import.meta.url);
+const rootDir = path.resolve(import.meta.dirname, '..');
+const { version } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
+const { date, revision } = JSON.parse(
+  fs.readFileSync(path.join(rootDir, 'cj-revision.json'), 'utf8'),
+);
+const [year, month, day] = date.split('-');
+const cjBuildLabel = `LibreChat ${version} · CJ rev. ${month}/${day}/${year.slice(-2)} v.${revision}`;
 
 /**
  * vite-plugin-node-polyfills uses @rollup/plugin-inject to replace bare globals (e.g. `process`)
@@ -49,6 +56,7 @@ const QUERY_DEVTOOLS_CHUNK_MODULES = [
 
 export default defineConfig(({ command }) => ({
   base: '',
+  define: { 'import.meta.env.CJ_BUILD_LABEL': JSON.stringify(cjBuildLabel) },
   server: {
     allowedHosts:
       (process.env.VITE_ALLOWED_HOSTS && process.env.VITE_ALLOWED_HOSTS.split(',')) || [],

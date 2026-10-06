@@ -200,6 +200,14 @@ function ChatView({ index = 0, project }: { index?: number; project?: TChatProje
                         )}
                       >
                         {isLandingPage && <ConversationStarters />}
+                        {isLandingPage && (
+                          <div
+                            data-testid="cj-build-version"
+                            className="px-4 pb-2 text-right text-xs text-text-secondary"
+                          >
+                            {import.meta.env.CJ_BUILD_LABEL}
+                          </div>
+                        )}
                         {isSubagentThreadReadOnly ? (
                           <div
                             className="mx-auto w-full max-w-3xl px-4 py-3 text-center text-sm text-text-secondary xl:max-w-4xl"
