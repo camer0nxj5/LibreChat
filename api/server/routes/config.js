@@ -1,3 +1,4 @@
+const { cjRoutingPublicConfig } = require('@librechat/api');
 const express = require('express');
 const {
   isEnabled,
@@ -293,6 +294,7 @@ router.get('/', async function (req, res) {
       sharedLinksSnapshotFilesEnabled: sharedLinksEnabled && isFileSnapshotEnabled(appConfig),
       socialLogins: appConfig?.registration?.socialLogins ?? defaultSocialLogins,
       interface: appConfig?.interfaceConfig,
+      cjRouting: cjRoutingPublicConfig(appConfig),
       titleGenerationTiming: resolveTitleTiming({
         appConfig,
         endpoint: EModelEndpoint.agents,

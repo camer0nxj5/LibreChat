@@ -1,0 +1,50 @@
+import { expect, test } from '@playwright/test';
+import { NEW_CHAT_PATH } from './helpers';
+for (const dark of [false, true]) {
+ test(`mobile composer alignment ${dark ? 'night' : 'day'}`, async ({ page }) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(NEW_CHAT_PATH);
+  await page.evaluate((dark) => { document.documentElement.classList.toggle('dark',dark); document.documentElement.classList.toggle('light',!dark); }, dark);
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content',dark?'#000000':'#ffffff');
+  await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /viewport-fit=cover/);
+  await page.evaluate(()=>{document.documentElement.style.setProperty('--cj-safe-top','54px');document.documentElement.style.setProperty('--cj-safe-bottom','34px');});
+  const shell=page.locator('.cj-app-shell');
+  expect(await shell.evaluate(el=>el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(54);
+  expect(await shell.evaluate(el=>getComputedStyle(el,'::before').height)).toBe('54px');
+  expect(await shell.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe(dark?'rgba(0, 0, 0, 0.48)':'rgba(255, 255, 255, 0.48)');
+  expect(await shell.evaluate(el=>el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(810);
+  await page.evaluate(()=>{document.documentElement.style.removeProperty('--cj-safe-top');document.documentElement.style.removeProperty('--cj-safe-bottom');});
+  const composer=page.getByTestId('composer-surface');
+  await expect(composer).toBeVisible();
+  const colors=await composer.evaluate(el=>({background:getComputedStyle(el).backgroundColor,radius:getComputedStyle(el).borderRadius}));
+  expect(colors.background).toBe(dark?'rgb(40, 40, 40)':'rgb(255, 255, 255)');
+  expect(colors.radius).toBe('26px');
+  expect(await page.locator('.cj-chat-header').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe(dark?'rgba(0, 0, 0, 0.48)':'rgba(255, 255, 255, 0.48)');
+  const row=page.locator('.cj-composer-actions');
+  const geometry=await row.evaluate(el=>{const r=el.getBoundingClientRect();const s=el.querySelector('[data-testid="send-button"]')!.getBoundingClientRect();return {rowBottom:r.bottom,sendBottom:s.bottom,rowRight:r.right,sendRight:s.right,overflow:document.documentElement.scrollWidth>innerWidth};});
+  expect(geometry.overflow).toBe(false);
+  expect(geometry.rowBottom-geometry.sendBottom).toBeLessThan(16);
+  expect(geometry.rowRight-geometry.sendRight).toBeLessThan(24);
+  await page.getByTestId('text-input').fill('Mobile layout check');
+  await page.setViewportSize({width:320,height:700});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(() => {
+ const fixture=document.createElement('div'); fixture.className='markdown prose';fixture.id='table-fixture';fixture.style.width='280px';
+ fixture.innerHTML='<div class="markdown-table-wrapper"><table><thead><tr><th>Document</th><th>Last Modified</th><th>Owner</th></tr></thead><tbody><tr><td><a>Long Spreadsheet Document Title</a></td><td>Oct 14, 2026</td><td><a>longemailaddress@example.com</a></td></tr></tbody></table></div>';
+ document.body.append(fixture);
+ });
+ const table=await page.locator('#table-fixture').evaluate(el=>{const wrap=el.firstElementChild!;const td=el.querySelector('td:last-child')!;return {overflow:wrap.scrollWidth>wrap.clientWidth,edge:getComputedStyle(wrap).borderBottomWidth,wrapping:getComputedStyle(td).overflowWrap,margin:getComputedStyle(el.querySelector('table')!).marginTop,color:getComputedStyle(wrap).borderBottomColor};});
+ expect(table.overflow).toBe(false);expect(table.edge).toBe('1px');expect(table.wrapping).toBe('anywhere');expect(table.margin).toBe('0px');expect(table.color).toBe(dark?'rgb(238, 238, 238)':'rgb(205, 205, 205)');
+ await page.locator('#table-fixture').evaluate(el=>el.remove());
+ await page.getByTestId('header-open-sidebar-button').click();
+  const close=page.getByTestId('close-sidebar-button');
+  await expect(close).toBeVisible();expect(await page.locator('.cj-drawer-header').evaluate(el=>getComputedStyle(el).borderBottomWidth)).toBe('0px');
+  expect(await close.evaluate(el=>getComputedStyle(el).borderRadius)).toBe('18px');
+  expect(await close.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain('linear-gradient');
+  await page.evaluate(()=>{const button=document.createElement('button');document.documentElement.classList.add('high-contrast');button.className='cj-conversation-link bg-surface-active-alt';button.id='focus-fixture';button.textContent='Selected chat';document.getElementById('mobile-drawer')!.append(button);button.focus();});
+ expect(await page.locator('#focus-fixture').evaluate(el=>getComputedStyle(el).outlineStyle)).toBe('none');
+ await page.locator('#focus-fixture').evaluate(el=>el.remove());
+ await page.screenshot({path:`/tmp/librechat-mobile-${dark?'night':'day'}.png`});
+ });
+}

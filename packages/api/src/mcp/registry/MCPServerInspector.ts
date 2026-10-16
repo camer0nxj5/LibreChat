@@ -1,6 +1,4 @@
 import { logger } from '@librechat/data-schemas';
-import { Constants, normalizeServerName, stripServerNamePrefixes } from 'librechat-data-provider';
-import type { JsonSchemaType } from '@librechat/data-schemas';
 import type { MCPConnection } from '~/mcp/connection';
 import type * as t from '~/mcp/types';
 import {
@@ -10,7 +8,7 @@ import {
   isUserSourced,
 } from '~/mcp/utils';
 import { isMCPDomainAllowed, extractMCPServerDomain } from '~/auth/domain';
-import { normalizeJsonSchema, resolveJsonSchemaRefs } from '~/mcp/zod';
+import { formatMCPServerTools } from '~/mcp/tools';
 import { isDirectOpenIDBearerRecoveryEnabled } from '~/mcp/openid';
 import { MCPConnectionFactory } from '~/mcp/MCPConnectionFactory';
 import { MCPDomainNotAllowedError } from '~/mcp/errors';
@@ -192,33 +190,7 @@ export class MCPServerInspector {
     }
     const { tools } = snapshot;
 
-    const toolFunctions: t.LCAvailableTools = {};
-    /** Model-facing key: must match the runtime instance name, which embeds
-     *  the normalized server name (see `createToolInstance` in MCP.js). */
-    const keyServerName = normalizeServerName(serverName);
-    const keyToolNames = stripServerNamePrefixes(
-      tools.map((tool) => tool.name),
-      keyServerName,
-    );
-    tools.forEach((tool) => {
-      const keyToolName = keyToolNames.get(tool.name) ?? tool.name;
-      const name = `${keyToolName}${Constants.mcp_delimiter}${keyServerName}`;
-      toolFunctions[name] = {
-        type: 'function',
-        ...(keyToolName !== tool.name && { serverToolName: tool.name }),
-        ['function']: {
-          name,
-          description: tool.description,
-          // Normalize before persisting: resolves `$ref`s and strips
-          // `$`-prefixed keywords (e.g. a spec-compliant `$schema`), which
-          // MongoDB rejects as field names and would otherwise crash storage
-          // of this `parameters` blob during server registration.
-          parameters: normalizeJsonSchema(
-            resolveJsonSchemaRefs(tool.inputSchema as Record<string, unknown>),
-          ) as JsonSchemaType,
-        },
-      };
-    });
+    const toolFunctions = formatMCPServerTools(serverName, tools);
 
     return { tools: toolFunctions, publicationRevision: snapshot.publicationRevision };
   }

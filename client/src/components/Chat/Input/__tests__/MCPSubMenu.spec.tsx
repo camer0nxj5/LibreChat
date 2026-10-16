@@ -163,4 +163,29 @@ describe('MCPSubMenu', () => {
     renderSubMenu();
     expect(screen.getByRole('button', { name: /com_ui_pin/i })).toBeInTheDocument();
   });
+  it('hides the submenu when only the dedicated Google integration is available', () => {
+    mockMcpServerManager = {
+      ...defaultMcpServerManager,
+      selectableServers: [
+        { serverName: 'CJ-Google-Tools', config: { title: 'Google Drive and Sheets' } },
+      ],
+    };
+    renderSubMenu();
+    expect(screen.queryByText('MCP Servers')).not.toBeInTheDocument();
+  });
+
+  it('omits Google while preserving other server choices', async () => {
+    mockMcpServerManager = {
+      ...defaultMcpServerManager,
+      selectableServers: [
+        ...defaultMcpServerManager.selectableServers,
+        { serverName: 'CJ-Google-Tools', config: { title: 'Google Drive and Sheets' } },
+      ],
+    };
+    const user = userEvent.setup();
+    renderSubMenu();
+    await user.click(screen.getByText('MCP Servers'));
+    expect(screen.queryByText('Google Drive and Sheets')).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitemcheckbox', { name: /Server A/i })).toBeInTheDocument();
+  });
 });

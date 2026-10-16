@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { ChevronRight } from 'lucide-react';
 import { MCPIcon, PinIcon } from '@librechat/client';
@@ -8,6 +8,7 @@ import { useMCPRefresh } from '~/hooks/MCP/useMCPRefresh';
 import { useBadgeRowContext } from '~/Providers';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
+import { genericMCPServers } from './mcpVisibility';
 
 interface MCPSubMenuProps extends React.HTMLAttributes<HTMLButtonElement> {
   placeholder?: string;
@@ -19,6 +20,11 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
     const context = useBadgeRowContext();
     const { storageContextKey, mcpServerManager } = context ?? {};
 
+    const selectableServers = useMemo(
+      () => genericMCPServers(mcpServerManager?.selectableServers),
+      [mcpServerManager?.selectableServers],
+    );
+
     const menuStore = Ariakit.useMenuStore({
       focusLoop: true,
       showTimeout: 100,
@@ -28,8 +34,7 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
     const isOpen = menuStore.useState('open');
     const configDialogOpen = mcpServerManager?.getConfigDialogProps()?.isOpen === true;
     useMCPRefresh({
-      enabled:
-        (isOpen || configDialogOpen) && (mcpServerManager?.selectableServers.length ?? 0) > 0,
+      enabled: (isOpen || configDialogOpen) && selectableServers.length > 0,
     });
 
     if (!mcpServerManager) {
@@ -43,7 +48,6 @@ const MCPSubMenu = React.forwardRef<HTMLButtonElement, MCPSubMenuProps>(
       isInitializing,
       placeholderText,
       connectionStatus,
-      selectableServers,
       getConfigDialogProps,
       toggleServerSelection,
       getServerStatusIconProps,

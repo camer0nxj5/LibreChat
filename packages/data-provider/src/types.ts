@@ -121,7 +121,9 @@ export type TEphemeralAgent = {
   /** Use the CJ Router advanced Tavily/extract/Cohere implementation for web_search. */
   advanced_search?: boolean;
   /** Check KB answer cards before the selected basic or advanced web-search provider. */
-  kb_cards?: boolean;
+  kb_cards?: boolean; // ignored: removed feature
+  google_tools?: boolean;
+  current_sources?: boolean;
   /** Per-chat search-round limits selected in the composer UI. */
   web_search_max_rounds?: number;
   advanced_search_max_rounds?: number;
@@ -146,8 +148,12 @@ export type TEphemeralAgent = {
   describe_intent?: boolean;
 };
 
+import type { RouteDecision } from './routing';
+
 export type TPayload = Partial<TMessage> &
   Partial<TEndpointOption> & {
+    cjRouteDecision?: RouteDecision;
+    cjRoutingVersion?: 1;
     isContinued: boolean;
     isRegenerate?: boolean;
     /** Manual context compaction: summarize the branch up to `parentMessageId`
@@ -205,6 +211,7 @@ export type TEditedContent =
     };
 
 export type TSubmission = {
+  cjRouteDecision?: RouteDecision;
   userMessage: TMessage;
   isEdited?: boolean;
   isContinued?: boolean;

@@ -143,7 +143,7 @@ export default function Root() {
           <AgentsMapContext.Provider value={agentsMap}>
             <PromptGroupsProvider>
               <Banner onHeightChange={setBannerHeight} />
-              <div className="flex" style={{ height: `calc(100dvh - ${bannerHeight}px)` }}>
+              <div className="cj-app-shell flex" style={{ height: `calc(100dvh - ${bannerHeight}px - var(--cj-safe-top, 0px) - var(--cj-safe-bottom, 0px))` }}>
                 <div
                   className="relative z-0 flex h-full w-full overflow-hidden"
                   /** The drawer and the pane both read this, so their travel

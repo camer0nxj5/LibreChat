@@ -1,3 +1,4 @@
+import { isUbuntuEndpoint, ubuntuIconURL } from '~/utils/ubuntuIcon';
 import React from 'react';
 import { Pin, PinOff } from 'lucide';
 import { MorphIcon } from '@librechat/client';
@@ -51,7 +52,7 @@ function EndpointModelItemComponent({
   const { ref: itemRef, isActive } = useActiveItem<HTMLDivElement>();
 
   let modelName = endpointModelDisplayName(endpoint.value, modelId);
-  const avatarUrl = endpoint?.modelIcons?.[modelId ?? ''] || null;
+  const avatarUrl = endpoint?.modelIcons?.[modelId ?? ''] || (isUbuntuEndpoint(endpoint.value) ? ubuntuIconURL : null);
 
   // Use custom names if available
   if (endpoint && modelId && isAgentsEndpoint(endpoint.value) && endpoint.agentNames?.[modelId]) {

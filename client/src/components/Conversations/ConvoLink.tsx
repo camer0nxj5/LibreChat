@@ -126,7 +126,7 @@ const ConvoLink: React.FC<ConvoLinkProps> = ({
     <button
       type="button"
       className={cn(
-        'flex w-full min-w-0 grow cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-text-primary',
+        'cj-conversation-link flex w-full min-w-0 grow cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-text-primary',
         isActiveConvo || isPopoverActive ? 'bg-surface-active-alt' : '',
       )}
       aria-current={isActiveConvo ? 'page' : undefined}

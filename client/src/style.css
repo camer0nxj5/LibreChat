@@ -2694,3 +2694,170 @@ html[data-input-modality='keyboard']
 ::view-transition-group(chat-form) {
   z-index: 2;
 }
+
+/* Approved CJ mobile day/night surfaces. Existing controls and behavior retained. */
+@media (max-width: 767px) {
+  :root {
+    --cj-chat: #ffffff;
+    --cj-composer: #ffffff;
+    --cj-sidebar: #f6f6f7;
+    --cj-edge: #cdcdcd;
+    --cj-heading: #000000;
+    --cj-table-heading: #ececec;
+    --presentation: var(--cj-chat);
+  }
+  .dark {
+    --cj-chat: #212121;
+    --cj-composer: #282828;
+    --cj-sidebar: #171717;
+    --cj-edge: #3c3c3c;
+    --cj-heading: #ececec;
+    --cj-table-heading: #414141;
+    --presentation: var(--cj-chat);
+  }
+  [data-testid='composer-surface'] {
+    width: calc(100% - 20px);
+    margin: 0 10px 10px;
+    border-radius: 26px;
+    border: 1px solid color-mix(in srgb, var(--cj-edge) 65%, transparent);
+    background: var(--cj-composer);
+    color: var(--cj-heading);
+    box-shadow: 0 3px 7px #00000012, 0 12px 24px #00000008;
+    padding-bottom: 4px;
+  }
+  [data-testid='composer-surface'] textarea,
+  [data-testid='composer-surface'] textarea::placeholder {
+    color: var(--cj-heading);
+    opacity: 1;
+  }
+  .cj-composer-actions { flex-wrap: nowrap; gap: 2px; }
+  .cj-composer-actions > * { min-width: 0; }
+  .cj-chat-header { background: var(--cj-chat); }
+  .dark .cj-chat-header { background: #000000; }
+  .cj-chat-header button, .cj-chat-header [role='combobox'] {
+    background: linear-gradient(180deg, #ffffff0c, transparent), var(--cj-composer);
+    border: 1px solid var(--cj-edge);
+    border-radius: 18px;
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: inset 0 1px 0 #ffffff10;
+  }
+  .markdown table, .prose table {
+    border: 1px solid var(--cj-edge);
+    border-radius: 18px;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    background: var(--cj-chat);
+  }
+  .markdown th, .prose th { background: var(--cj-table-heading); }
+  .markdown :is(th, td), .prose :is(th, td) {
+    border-bottom: 1px solid var(--cj-edge);
+    border-right: 1px solid var(--cj-edge);
+  }
+  .markdown tr:last-child td, .prose tr:last-child td { border-bottom: 0; }
+  .markdown tr > :last-child, .prose tr > :last-child { border-right: 0; }
+  .markdown :is(strong, th), .prose :is(strong, th) { font-weight: 700; }
+  #mobile-drawer, #mobile-drawer nav, #mobile-drawer .bg-surface-primary-alt, .cj-side-panel { background: var(--cj-sidebar); color: var(--cj-heading); }
+}
+
+@media (max-width: 767px) {
+  .cj-chat-header [data-testid='header-new-chat-button'],
+  #mobile-drawer .cj-drawer-footer > button,
+  #mobile-drawer .cj-drawer-header button,
+  #mobile-drawer .cj-drawer-header [role='combobox'],
+  #mobile-drawer .cj-drawer-header [aria-haspopup='menu'] {
+    background: linear-gradient(180deg, #ffffff0c, transparent), var(--cj-composer);
+    border: 1px solid var(--cj-edge);
+    border-radius: 18px;
+    color: var(--cj-heading);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: inset 0 1px 0 #ffffff10;
+  }
+  #mobile-drawer .cj-conversation-link:focus-visible { box-shadow: none; }
+}
+
+@media (max-width: 767px) {
+  .cj-chat-header, .dark .cj-chat-header {
+    background: color-mix(in srgb, #ffffff 78%, transparent);
+    backdrop-filter: blur(18px) saturate(130%);
+    -webkit-backdrop-filter: blur(18px) saturate(130%);
+  }
+  .dark .cj-chat-header { background: color-mix(in srgb, #000000 78%, transparent); }
+  .markdown-table-wrapper {
+    border: 1px solid var(--cj-edge);
+    border-radius: 18px;
+    padding-bottom: 0;
+    background: var(--cj-chat);
+  }
+  .markdown-table-wrapper table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+    border: 0;
+    border-radius: 0;
+  }
+  .markdown-table-wrapper :is(th, td) {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    padding: 8px 10px;
+    border: 0;
+    border-right: 1px solid var(--cj-edge);
+    border-bottom: 1px solid var(--cj-edge);
+    border-radius: 0 !important;
+  }
+  .markdown-table-wrapper :is(th, td) :is(a, span, p) { white-space: normal; overflow-wrap: anywhere; }
+  .markdown-table-wrapper tr > :last-child { border-right: 0; }
+  .markdown-table-wrapper tbody tr:last-child td { border-bottom: 0; }
+}
+
+@media (max-width: 767px) {
+  .markdown-table-wrapper { border-color: #cdcdcd; }
+  .dark .markdown-table-wrapper { border-color: #eeeeee; }
+  .markdown-table-wrapper table { margin: 0 !important; }
+  #mobile-drawer .cj-conversation-link:is(:focus, :focus-visible) {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  #mobile-drawer .cj-drawer-footer [data-testid='nav-new-chat-fab'] {
+    background: linear-gradient(180deg, #ffffff0c, transparent), var(--cj-composer);
+    border: 1px solid var(--cj-edge);
+    border-radius: 18px;
+    color: var(--cj-heading);
+  }
+}
+
+@media (max-width: 767px) {
+  #mobile-drawer .cj-conversation-link {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  #mobile-drawer .cj-drawer-header { border-bottom: 0; }
+  .cj-chat-header { background: color-mix(in srgb, #ffffff 48%, transparent); }
+  .dark .cj-chat-header { background: color-mix(in srgb, #000000 48%, transparent); }
+}
+
+@media (max-width: 767px) {
+  :root { --cj-safe-top: env(safe-area-inset-top, 0px); --cj-safe-bottom: env(safe-area-inset-bottom, 0px); }
+  html, body { background-color: #ffffff; }
+  html.dark, html.dark body { background-color: #000000; }
+  .cj-app-shell { margin-top: var(--cj-safe-top); }
+  .cj-app-shell::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--cj-safe-top);
+    z-index: 200;
+    pointer-events: none;
+    background: color-mix(in srgb, #ffffff 48%, transparent);
+    backdrop-filter: blur(18px) saturate(130%);
+    -webkit-backdrop-filter: blur(18px) saturate(130%);
+  }
+  .dark .cj-app-shell::before { background: color-mix(in srgb, #000000 48%, transparent); }
+  #mobile-drawer { top: var(--cj-safe-top); bottom: var(--cj-safe-bottom); }
+}

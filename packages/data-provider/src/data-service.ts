@@ -7,11 +7,13 @@ import type {
   TTraceRecordDetail,
 } from './types/traces';
 import type { TInsightsAccessResponse, TInsightsParams, TInsightsResponse } from './types/insights';
+import type { RouteInput, RouteAssessment } from './routing';
 import type { TFileConfig } from './file-config';
 import type * as t from './types';
 import * as permissions from './accessPermissions';
 import * as endpoints from './api-endpoints';
 import { uploadEventStream } from './upload';
+import { routeCardSchema } from './routing';
 import * as mcp from './types/mcpServers';
 import * as qt from './types/queuedTurns';
 import * as sch from './types/schedules';
@@ -1646,3 +1648,8 @@ export interface ActiveJobsResponse {
 export const getActiveJobs = (): Promise<ActiveJobsResponse> => {
   return request.get(endpoints.activeJobs());
 };
+
+export async function assessCJRoute(input: RouteInput): Promise<RouteAssessment> {
+  const response: RouteAssessment = await request.post(endpoints.cjRouteAssess(), input);
+  return { card: response.card === null ? null : routeCardSchema.parse(response.card) };
+}

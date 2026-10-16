@@ -5,7 +5,6 @@ import {
   Brain,
   ChevronDown,
   ChevronUp,
-  Database,
   Globe,
   ScrollText,
   Settings,
@@ -29,6 +28,7 @@ import {
 } from '~/hooks';
 import ArtifactsSubMenu from '~/components/Chat/Input/ArtifactsSubMenu';
 import MCPSubMenu from '~/components/Chat/Input/MCPSubMenu';
+import GoogleDriveIcon from './GoogleDriveIcon';
 import { useGetStartupConfig } from '~/data-provider';
 import { useBadgeRowContext } from '~/Providers';
 import { cn } from '~/utils';
@@ -91,7 +91,8 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     memory,
     webSearch,
     advancedSearch,
-    kbCards,
+    googleTools,
+    toggleGoogleTools,
     webSearchLimit,
     advancedSearchLimit,
     artifacts,
@@ -111,7 +112,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
   const { isPinned: isCodePinned, setIsPinned: setIsCodePinned } = codeInterpreter ?? {};
   const { isPinned: isAdvancedSearchPinned, setIsPinned: setIsAdvancedSearchPinned } =
     advancedSearch ?? {};
-  const { isPinned: isKbCardsPinned, setIsPinned: setIsKbCardsPinned } = kbCards ?? {};
+  const { isPinned: isGoogleToolsPinned, setIsPinned: setIsGoogleToolsPinned } = googleTools ?? {};
   const { isPinned: isFileSearchPinned, setIsPinned: setIsFileSearchPinned } = fileSearch ?? {};
   const { isPinned: isArtifactsPinned, setIsPinned: setIsArtifactsPinned } = artifacts ?? {};
   const { isPinned: isSkillsPinned, setIsPinned: setIsSkillsPinned } = skills ?? {};
@@ -141,10 +142,10 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     }));
   }, [advancedSearch]);
 
-  const handleKbCardsToggle = useCallback(() => {
-    const newValue = !kbCards?.toggleState;
-    kbCards?.debouncedChange({ value: newValue });
-  }, [kbCards]);
+  const handleGoogleToolsToggle = useCallback(() => {
+    const newValue = !googleTools?.toggleState;
+    toggleGoogleTools?.(newValue);
+  }, [googleTools, toggleGoogleTools]);
 
   const roundLimitStepper = (
     value: unknown,
@@ -366,36 +367,37 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
       ),
     });
 
+  }
+
     dropdownItems.push({
-      onClick: handleKbCardsToggle,
+      onClick: handleGoogleToolsToggle,
       hideOnClick: false,
       render: (props) => (
-        <div {...props} data-testid="tools-menu-kb-cards">
+        <div {...props} data-testid="tools-menu-google-tools">
           <div className="flex items-center gap-2">
-            <Database className="icon-md text-blue-500" aria-hidden="true" />
-            <span>KB Cards</span>
+            <GoogleDriveIcon className="icon-md" aria-hidden="true" />
+            <span>Google Tools</span>
           </div>
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setIsKbCardsPinned?.(!isKbCardsPinned);
+              setIsGoogleToolsPinned?.(!isGoogleToolsPinned);
             }}
             className={cn(
               'rounded p-1 transition-all duration-200',
               'hover:bg-surface-secondary hover:shadow-sm',
-              !isKbCardsPinned && 'text-text-secondary hover:text-text-primary',
+              !isGoogleToolsPinned && 'text-text-secondary hover:text-text-primary',
             )}
-            aria-label={isKbCardsPinned ? 'Unpin' : 'Pin'}
+            aria-label={isGoogleToolsPinned ? 'Unpin' : 'Pin'}
           >
             <div className="h-4 w-4">
-              <PinIcon unpin={isKbCardsPinned} />
+              <PinIcon unpin={isGoogleToolsPinned} />
             </div>
           </button>
         </div>
       ),
     });
-  }
 
   if (canUseSkills && skillsEnabled) {
     dropdownItems.push({

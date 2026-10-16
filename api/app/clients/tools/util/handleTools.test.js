@@ -907,7 +907,7 @@ describe('Tool Handlers', () => {
       return mockCreateSearchTool.mock.calls.at(-1)[0];
     }
 
-    it('eagerly preloads full KB coverage and omits web search before lazy tool construction', async () => {
+    it('ignores stale KB Cards requests and retains basic web search', async () => {
       mockPreloadCJRouterKbCards.mockResolvedValueOnce({
         context: 'KB evidence for the original question',
         cardIds: ['qwen-card'],
@@ -933,16 +933,12 @@ describe('Tool Handlers', () => {
         },
       });
 
-      expect(mockPreloadCJRouterKbCards).toHaveBeenCalledWith(
-        expect.objectContaining({ originalIntent: 'Does Qwen have a 35b model?' }),
-      );
-      expect(result.loadedTools).toEqual([]);
-      expect(result.toolContextMap[Tools.web_search]).toContain(
-        'KB evidence for the original question',
-      );
+      expect(mockPreloadCJRouterKbCards).not.toHaveBeenCalled();
+      expect(result.loadedTools).toHaveLength(1);
+      expect(result.toolContextMap[Tools.web_search] ?? '').not.toContain('KB evidence for the original question');
     });
 
-    it('keeps web search when currentness requires verification even with full KB coverage', async () => {
+    it('keeps basic currentness instructions without reactivating removed KB Cards', async () => {
       mockPreloadCJRouterKbCards.mockResolvedValueOnce({
         context: 'KB evidence for the original question',
         cardIds: ['range-card'],
@@ -970,11 +966,10 @@ describe('Tool Handlers', () => {
 
       expect(result.loadedTools).toHaveLength(1);
       expect(result.toolContextMap[Tools.web_search]).toContain(
-        'Invoke web_search before giving the final answer',
+        'current, real-time',
       );
-      expect(result.toolContextMap[Tools.web_search]).toContain(
-        'KB evidence for the original question',
-      );
+      expect(mockPreloadCJRouterKbCards).not.toHaveBeenCalled();
+      expect(result.toolContextMap[Tools.web_search] ?? '').not.toContain('KB evidence for the original question');
     });
 
     it('threads pooled SSRF-safe agents into the search tool config', async () => {

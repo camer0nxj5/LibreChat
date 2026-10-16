@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSetRecoilState } from 'recoil';
 import { Tools, Constants, LocalStorageKeys, AgentCapabilities } from 'librechat-data-provider';
 import type { TAgentsEndpoint, TEphemeralAgent } from 'librechat-data-provider';
@@ -11,6 +11,7 @@ import {
 import { getTimestampedValue } from '~/utils/timestamps';
 import { useGetStartupConfig } from '~/data-provider';
 import { ephemeralAgentByConvoId } from '~/store';
+import { ChatContext } from './ChatContext';
 
 interface BadgeRowContextType {
   conversationId?: string | null;
@@ -20,7 +21,10 @@ interface BadgeRowContextType {
   memory: ReturnType<typeof useToolToggle>;
   webSearch: ReturnType<typeof useToolToggle>;
   advancedSearch: ReturnType<typeof useToolToggle>;
-  kbCards: ReturnType<typeof useToolToggle>;
+  googleTools: ReturnType<typeof useToolToggle>;
+  currentSources: ReturnType<typeof useToolToggle>;
+  usesClawiQ: boolean;
+  toggleGoogleTools: (enabled: boolean) => void;
   webSearchLimit: ReturnType<typeof useToolToggle>;
   advancedSearchLimit: ReturnType<typeof useToolToggle>;
   artifacts: ReturnType<typeof useToolToggle>;
@@ -51,6 +55,7 @@ export default function BadgeRowProvider({
   specName,
   observeToolAuthorization = false,
 }: BadgeRowProviderProps) {
+  const chat = useContext(ChatContext);
   const lastContextKeyRef = useRef<string>('');
   const hasInitializedRef = useRef(false);
   const { agentsConfig } = useGetAgentsConfig();
@@ -105,7 +110,7 @@ export default function BadgeRowProvider({
       const codeToggleKey = `${LocalStorageKeys.LAST_CODE_TOGGLE_}${storageSuffix}`;
       const webSearchToggleKey = `${LocalStorageKeys.LAST_WEB_SEARCH_TOGGLE_}${storageSuffix}`;
       const advancedSearchToggleKey = `${LocalStorageKeys.LAST_ADVANCED_SEARCH_TOGGLE_}${storageSuffix}`;
-      const kbCardsToggleKey = `${LocalStorageKeys.LAST_KB_CARDS_TOGGLE_}${storageSuffix}`;
+      const googleToolsToggleKey = `lastGoogleToolsToggle_${storageSuffix}`;
       const webSearchLimitKey = `${LocalStorageKeys.LAST_WEB_SEARCH_LIMIT_}${storageSuffix}`;
       const advancedSearchLimitKey = `${LocalStorageKeys.LAST_ADVANCED_SEARCH_LIMIT_}${storageSuffix}`;
       const fileSearchToggleKey = `${LocalStorageKeys.LAST_FILE_SEARCH_TOGGLE_}${storageSuffix}`;
@@ -116,7 +121,7 @@ export default function BadgeRowProvider({
       const codeToggleValue = getTimestampedValue(codeToggleKey);
       const webSearchToggleValue = getTimestampedValue(webSearchToggleKey);
       const advancedSearchToggleValue = getTimestampedValue(advancedSearchToggleKey);
-      const kbCardsToggleValue = getTimestampedValue(kbCardsToggleKey);
+      const googleToolsToggleValue = getTimestampedValue(googleToolsToggleKey);
       const webSearchLimitValue = getTimestampedValue(webSearchLimitKey);
       const advancedSearchLimitValue = getTimestampedValue(advancedSearchLimitKey);
       const fileSearchToggleValue = getTimestampedValue(fileSearchToggleKey);
@@ -125,6 +130,7 @@ export default function BadgeRowProvider({
       const memoryToggleValue = getTimestampedValue(memoryToggleKey);
 
       const initialValues: Record<string, boolean | string | number> = {};
+      try { const saved=getTimestampedValue(`lastCurrentSourcesToggle_${storageSuffix}`); if(saved!==null) initialValues.current_sources=JSON.parse(saved)===true; } catch {}
 
       if (codeToggleValue !== null) {
         try {
@@ -150,11 +156,11 @@ export default function BadgeRowProvider({
         }
       }
 
-      if (kbCardsToggleValue !== null) {
+      if (googleToolsToggleValue !== null) {
         try {
-          initialValues.kb_cards = JSON.parse(kbCardsToggleValue);
+          initialValues.google_tools = JSON.parse(googleToolsToggleValue);
         } catch (e) {
-          console.error('Failed to parse KB Cards toggle value:', e);
+          console.error('Failed to parse Google Tools toggle value:', e);
         }
       }
 
@@ -296,11 +302,13 @@ export default function BadgeRowProvider({
     isAuthenticated: true,
   });
 
-  const kbCards = useToolToggle({
+  const currentSources = useToolToggle({conversationId, storageContextKey, toolKey: 'current_sources', localStorageKey: 'lastCurrentSourcesToggle_' as LocalStorageKeys, isAuthenticated: true});
+
+  const googleTools = useToolToggle({
     conversationId,
     storageContextKey,
-    toolKey: 'kb_cards',
-    localStorageKey: LocalStorageKeys.LAST_KB_CARDS_TOGGLE_,
+    toolKey: 'google_tools',
+    localStorageKey: 'lastGoogleToolsToggle_' as LocalStorageKeys,
     isAuthenticated: true,
   });
 
@@ -364,12 +372,22 @@ export default function BadgeRowProvider({
     observeToolAuthorization,
   });
 
+  const toggleGoogleTools = useCallback((enabled: boolean) => {
+    googleTools.setToggleState(enabled);
+    if (enabled && chat && String(chat.conversation?.endpoint) !== 'ClawiQ') {
+      void mcpServerManager.initializeServer('CJ-Google-Tools');
+    }
+  }, [googleTools.setToggleState, chat?.conversation?.endpoint, mcpServerManager.initializeServer]);
+
   const value: BadgeRowContextType = {
     skills,
     memory,
     webSearch,
     advancedSearch,
-    kbCards,
+    googleTools,
+    currentSources,
+    usesClawiQ: String(chat?.conversation?.endpoint) === 'ClawiQ',
+    toggleGoogleTools,
     webSearchLimit,
     advancedSearchLimit,
     artifacts,

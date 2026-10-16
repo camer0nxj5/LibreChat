@@ -1,3 +1,9 @@
+const {
+  attachClawiQPermit,
+  applyCJRoute,
+  captureCJRouteOrigin,
+  cjRouteSender,
+} = require('@librechat/api');
 const { logger } = require('@librechat/data-schemas');
 const { createContentAggregator, GraphNodeKeys } = require('@librechat/agents');
 const {
@@ -328,7 +334,10 @@ const initializeClient = async ({
       accessibleSkillIds,
     }),
   );
-  const primaryAgentPromise = endpointOption.agent;
+  captureCJRouteOrigin(req, endpointOption);
+  const primaryAgentPromise = endpointOption.agent.then((agent) =>
+    applyCJRoute(agent, req.cjResolvedRoute),
+  );
   const loadModelCatalog = createGenerationModelLoader((providers) =>
     getModelsConfig(req, providers),
   );
@@ -1621,6 +1630,8 @@ const initializeClient = async ({
     }
   }
 
+  attachClawiQPermit(primaryConfig, req, conversationId);
+
   const agentContextAttachmentsByAgentId = buildAgentContextAttachmentsByAgentId([
     primaryConfig,
     ...agentConfigs.values(),
@@ -1641,16 +1652,19 @@ const initializeClient = async ({
     }
   }
 
-  const sender = resolveSender({
-    agent: primaryConfig,
-    specLabel: selectedModelSpec?.label,
-    endpointOption: {
-      ...endpointOption,
-      model: endpointOption.model_parameters.model,
-      modelDisplayLabel: endpointConfig?.modelDisplayLabel,
-      modelLabel: endpointOption.model_parameters.modelLabel,
-    },
-  });
+  const sender = cjRouteSender(
+    resolveSender({
+      agent: primaryConfig,
+      specLabel: selectedModelSpec?.label,
+      endpointOption: {
+        ...endpointOption,
+        model: endpointOption.model_parameters.model,
+        modelDisplayLabel: endpointConfig?.modelDisplayLabel,
+        modelLabel: endpointOption.model_parameters.modelLabel,
+      },
+    }),
+    req,
+  );
 
   /** History priming uses the user's full ACL-accessible skill set (not
    *  per-agent scoped) because prior turns may reference skills no longer

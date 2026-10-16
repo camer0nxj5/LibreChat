@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useRecoilValue } from 'recoil';
+import { atom, useAtom } from 'jotai';
 import { Button } from '@librechat/client';
 import {
   Constants,
@@ -54,6 +55,7 @@ export default function ToolCall({
 }) {
   const localize = useLocalize();
   const [oauthError, setOAuthError] = useState<string | null>(null);
+  const [boundOAuthUrl, setBoundOAuthUrl] = useAtom(useMemo(() => atom<string | null>(null), []));
   const autoExpand = useRecoilValue(store.autoExpandTools);
   const hasOutput = (output?.length ?? 0) > 0;
   const [showInfo, setShowInfo] = useState(() => autoExpand && hasOutput);
@@ -144,6 +146,16 @@ export default function ToolCall({
       return;
     }
     setOAuthError(null);
+    setBoundOAuthUrl(null);
+    // Reserve a tab during the actual tap. Opening after await is blocked by Safari.
+    let popup: Window | null = null;
+    try {
+      popup = window.open('about:blank', '_blank');
+      if (popup) popup.opener = null;
+    } catch {
+      popup?.close();
+      popup = null;
+    }
     try {
       if (isMCPToolCall && mcpServerName) {
         await dataService.bindMCPOAuth(mcpServerName);
@@ -151,12 +163,23 @@ export default function ToolCall({
         await dataService.bindActionOAuth(actionId);
       }
     } catch (e) {
+      popup?.close();
       logger.error('Failed to bind OAuth CSRF cookie', e);
       setOAuthError(localize('com_ui_oauth_error_generic'));
       return;
     }
-    window.open(auth, '_blank', 'noopener,noreferrer');
-  }, [auth, isMCPToolCall, mcpServerName, actionId, localize]);
+    if (popup && !popup.closed) {
+      try {
+        popup.location.replace(auth);
+        return;
+      } catch {
+        popup.close();
+      }
+    }
+    // Cookie binding succeeded. A native link provides a fresh browser gesture
+    // when a webview cannot reserve a popup, while leaving the chat open.
+    setBoundOAuthUrl(auth);
+  }, [auth, isMCPToolCall, mcpServerName, actionId, localize, setBoundOAuthUrl]);
 
   const hasError = (typeof output === 'string' && isError(output)) || runStepStatus === 'failed';
   /**
@@ -332,14 +355,25 @@ export default function ToolCall({
       {auth != null && auth && phase === 'running' && (
         <div className="flex w-full flex-col gap-2.5">
           <div className="mb-1 mt-2">
-            <Button
-              className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
-              variant="default"
-              rel="noopener noreferrer"
-              onClick={handleOAuthClick}
-            >
-              {localize('com_ui_sign_in_to_domain', { 0: authDomain })}
-            </Button>
+            {boundOAuthUrl === auth ? (
+              <Button
+                asChild
+                variant="default"
+                className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
+              >
+                <a href={auth} target="_blank" rel="noopener noreferrer">
+                  {localize('com_ui_sign_in_to_domain', { 0: authDomain })}
+                </a>
+              </Button>
+            ) : (
+              <Button
+                className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium"
+                variant="default"
+                onClick={handleOAuthClick}
+              >
+                {localize('com_ui_sign_in_to_domain', { 0: authDomain })}
+              </Button>
+            )}
           </div>
           {oauthError && (
             <p role="alert" className="text-sm text-text-destructive">

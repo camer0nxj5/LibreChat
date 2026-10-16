@@ -1,3 +1,5 @@
+const { restoreCJRoutingResume } = require('@librechat/api');
+const { gate: cjRoutingGate } = require('~/server/services/CJRouting');
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const {
@@ -55,6 +57,7 @@ const restoreResumeContext = async (req, res, next) => {
       const job = await GenerationJobManager.getJob(streamId);
       const resumeContext = job?.metadata?.pendingAction?.resumeContext;
       applyResumeContext(req.body, resumeContext);
+      restoreCJRoutingResume(req, resumeContext);
       // Replay the paused turn's resolved model parameters. Ephemeral agents derive these
       // (temperature, max tokens, custom endpoint params) from the request body, which the
       // resume payload omits — without this the continuation runs with defaults. They're
@@ -71,6 +74,7 @@ const restoreResumeContext = async (req, res, next) => {
 };
 
 router.use(restoreResumeContext);
+router.use(cjRoutingGate);
 router.use(
   createMessageFilterPii({
     onTraversalFailure: reportLocatorTraversalFailure,

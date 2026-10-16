@@ -114,6 +114,27 @@ test.describe('MCP OAuth stream resume', () => {
         timeout: 30000,
       });
       await expect(page.getByRole('button', { name: SIGN_IN_BUTTON })).toHaveCount(1);
+
+      // Model a slow CSRF-cookie request. The tab must exist before it resolves.
+      let releaseBinding!: () => void;
+      const bindingGate = new Promise<void>((resolve) => {
+        releaseBinding = resolve;
+      });
+      await page.route('**/api/mcp/e2e-oauth/oauth/bind', async (route) => {
+        await bindingGate;
+        await route.continue();
+      });
+      const popupPromise = page.waitForEvent('popup');
+      await page.getByRole('button', { name: SIGN_IN_BUTTON }).click();
+      const popup = await popupPromise;
+      expect(popup.url()).toBe('about:blank');
+      releaseBinding();
+      await popup.waitForURL(/\/authorize(?:\?|$)/);
+      await expect(
+        popup.getByText('Authorization intentionally remains pending for the E2E test.'),
+      ).toBeVisible();
+      expect(await popup.evaluate(() => window.opener)).toBeNull();
+      await popup.close();
     } finally {
       const stop = page.getByRole('button', { name: 'Stop generating' });
       if (await stop.isVisible({ timeout: 1000 }).catch(() => false)) {

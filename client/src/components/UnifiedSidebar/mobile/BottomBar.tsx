@@ -62,7 +62,7 @@ function BottomBar({
 
   return (
     <div
-      className="flex flex-shrink-0 items-center gap-2 px-3 pt-2"
+      className="cj-drawer-footer flex flex-shrink-0 items-center gap-2 px-3 pt-2"
       style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
     >
       {showSearch && (

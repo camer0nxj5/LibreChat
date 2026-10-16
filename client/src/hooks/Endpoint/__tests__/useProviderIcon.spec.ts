@@ -55,3 +55,9 @@ describe('useProviderIcon', () => {
     expect(run(EModelEndpoint.agents)).toEqual({ provider: null, imageURL: null });
   });
 });
+
+ it.each(['Ubuntu CPU Titles', 'Ubuntu NInfer', 'Ubuntu vLLM'])('uses Ubuntu art for %s including preset endpoint fallback', endpoint => {
+  expect(run(endpoint).imageURL).toBe('/assets/ubuntu-circle.svg');
+  expect(run(endpoint, endpoint).imageURL).toBe('/assets/ubuntu-circle.svg');
+  expect(run(endpoint, 'https://cdn.example.com/custom.png').imageURL).toBe('https://cdn.example.com/custom.png');
+ });

@@ -41,6 +41,20 @@ describe('applyModelSpecEphemeralAgent', () => {
     updateEphemeralAgent = jest.fn();
   });
 
+  it.each([true, false])('restores the Google Tools selection %s in an existing spec conversation', (enabled) => {
+    const convoId = 'google-tool-restore';
+    writeToolToggle('lastGoogleToolsToggle_', convoId, enabled);
+    applyModelSpecEphemeralAgent({
+      convoId,
+      modelSpec: createModelSpec(),
+      updateEphemeralAgent,
+    });
+    expect(updateEphemeralAgent).toHaveBeenCalledWith(
+      convoId,
+      expect.objectContaining({ google_tools: enabled }),
+    );
+  });
+
   // ─── New Conversations ─────────────────────────────────────────────
 
   describe('new conversations always get fresh admin spec config', () => {

@@ -2809,5 +2809,8 @@
   "com_insights_invalid_date_range": "Choose an end date after the start date, within {{days}} days.",
   "com_insights_sparkline_accessibility": "{{label}} over time",
   "com_nav_mobile_drawer_strip": "Show chat beside the sidebar on mobile",
-  "com_nav_mobile_drawer_strip_info": "The sidebar stops short of the edge so a strip of the conversation stays visible. Tapping it closes the sidebar."
+  "com_nav_mobile_drawer_strip_info": "The sidebar stops short of the edge so a strip of the conversation stays visible. Tapping it closes the sidebar.",
+  "com_ui_cj_route_title": "CJ Router recommendation",
+  "com_ui_cj_route_checking": "Checking routing options…",
+  "com_ui_cj_route_error": "The routing check could not finish. Your request has not been sent. Retry or cancel to keep editing."
 }

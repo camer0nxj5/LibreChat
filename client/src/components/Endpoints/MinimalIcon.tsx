@@ -1,3 +1,4 @@
+import { isUbuntuEndpoint, ubuntuIconURL } from '~/utils/ubuntuIcon';
 import { Feather } from 'lucide-react';
 import { EModelEndpoint, alternateName } from 'librechat-data-provider';
 import { Sparkles, ProviderIcon, getProviderIconDef } from '@librechat/client';
@@ -44,6 +45,10 @@ const MinimalIcon: React.FC<IconProps> = (props) => {
       )}
     </div>
   );
+
+  if (isUbuntuEndpoint(endpoint) && imageURL === ubuntuIconURL) {
+    return renderWrapper(<img src={ubuntuIconURL} alt="Ubuntu" className="h-full w-full object-contain" />, 'Ubuntu');
+  }
 
   if (endpoint === EModelEndpoint.agents) {
     return renderWrapper(

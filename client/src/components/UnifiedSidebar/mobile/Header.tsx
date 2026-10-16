@@ -45,7 +45,7 @@ function Header({
   }, [expanded]);
 
   return (
-    <div className="flex h-14 flex-shrink-0 items-center gap-2 border-b border-border-light px-2">
+    <div className="cj-drawer-header flex h-14 flex-shrink-0 items-center gap-2 border-b border-border-light px-2">
       <Button
         ref={closeRef}
         /**

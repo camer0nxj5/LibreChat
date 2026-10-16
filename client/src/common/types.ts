@@ -1,6 +1,7 @@
 import { RefObject } from 'react';
 import { FileSources, EModelEndpoint, isEphemeralAgentId } from 'librechat-data-provider';
 import type { UseMutationResult } from '@tanstack/react-query';
+import type { RouteDecision } from 'librechat-data-provider';
 import type * as InputNumberPrimitive from 'rc-input-number';
 import type { SetterOrUpdater, RecoilState } from 'recoil';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -329,6 +330,8 @@ export type TAskProps = {
 };
 
 export type TOptions = {
+  cjRouteDecision?: RouteDecision;
+  onCJRouteSubmitted?: () => void;
   editedMessageId?: string | null;
   editedContent?: t.TEditedContent;
   isRegenerate?: boolean;

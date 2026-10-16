@@ -24,6 +24,7 @@ import { STATEFUL_CODE_ENVIRONMENTS } from './stateful-code';
 import { specsConfigSchema, TSpecsConfig } from './models';
 import { isActionTool } from './types/assistants';
 import { REFILL_INTERVAL_UNITS } from './balance';
+import { cjRouterConfigSchema } from './routing';
 import { fileConfigSchema } from './file-config';
 import { apiBaseUrl } from './api-endpoints';
 import { FileSources } from './types/files';
@@ -2186,6 +2187,7 @@ export type StartupConfigContext = 'share';
 export type EndpointsDropParamsMap = Record<string, string[] | Record<string, string[]>>;
 
 export type TStartupConfig = {
+  cjRouting?: { enabled: boolean; localEndpoints: string[] };
   appTitle: string;
   socialLogins?: string[];
   langfuseFanoutEnabled?: boolean;
@@ -2780,6 +2782,7 @@ export const langfuseConfigSchema = z.object({
 export type LangfuseConfig = z.infer<typeof langfuseConfigSchema>;
 
 export const configSchema = z.object({
+  cjRouter: cjRouterConfigSchema,
   version: z.string(),
   cache: z.boolean().default(true),
   ocr: ocrSchema.optional(),

@@ -80,7 +80,10 @@ export async function loadEphemeralAgent(
    *  spec's servers are the operator's choice and are added after, so pinning a
    *  chat-hidden server to a spec keeps working. */
   const mcpServers = new Set<string>(
-    await filterChatSelectableMCPServers(ephemeralAgent?.mcp, {
+    await filterChatSelectableMCPServers(endpoint === 'ClawiQ' ? [] : [
+      ...(ephemeralAgent?.mcp ?? []).filter((name) => name !== 'CJ-Google-Tools'),
+      ...(ephemeralAgent?.google_tools === true ? ['CJ-Google-Tools'] : []),
+    ], {
       userId,
       role: req.user?.role,
       getAccessibleMCPServers: deps.getAccessibleMCPServers,

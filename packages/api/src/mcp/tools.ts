@@ -5,12 +5,14 @@ import {
   normalizeServerName,
   stripServerNamePrefixes,
 } from 'librechat-data-provider';
+import type { JSONSchema7 } from 'json-schema';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { JsonSchemaType } from '@librechat/agents';
 import type { LCAvailableTools, LCFunctionTool, ParsedServerConfig } from './types';
 import { canUseAppConnection, requiresEphemeralUserConnection } from './utils';
 import { getMCPAppToolsPublicationGeneration } from './toolsChanged';
 import { normalizeJsonSchema, resolveJsonSchemaRefs } from './zod';
+import { createToolDescriptionQualifier, qualifySchemaDescriptions } from './descriptions';
 
 export type MCPToolInput = Pick<Tool, 'name' | 'description'> & Partial<Pick<Tool, 'inputSchema'>>;
 
@@ -109,7 +111,48 @@ export function formatMCPServerTools(serverName: string, tools: MCPToolInput[]):
     }
     serverTools[name] = entry;
   }
-  return serverTools;
+  return qualifyCatalogDescriptions(serverName, serverTools);
+}
+
+function qualifyCatalogDescriptions(serverName: string, tools: LCAvailableTools): LCAvailableTools;
+function qualifyCatalogDescriptions(
+  serverName: string,
+  tools: LCAvailableTools | null,
+): LCAvailableTools | null;
+function qualifyCatalogDescriptions(
+  serverName: string,
+  tools: LCAvailableTools | null,
+): LCAvailableTools | null {
+  if (tools == null) return null;
+  const suffix = `${Constants.mcp_delimiter}${normalizeServerName(serverName)}`;
+  const entries = Object.entries(tools).filter(([name]) => name.endsWith(suffix));
+  const qualify = createToolDescriptionQualifier(
+    entries.flatMap(([name, entry]) => {
+      const shortName = name.slice(0, -suffix.length);
+      return [...new Set([name, shortName, entry.serverToolName ?? shortName])].map((source) => ({
+        source,
+        target: name,
+      }));
+    }),
+  );
+  const result = { ...tools };
+  for (const [name, entry] of entries) {
+    const fn = entry.function;
+    result[name] = {
+      ...entry,
+      function: {
+        ...fn,
+        description: qualify(fn.description ?? ''),
+        ...(fn.parameters && {
+          parameters: qualifySchemaDescriptions(
+            fn.parameters as JSONSchema7,
+            qualify,
+          ) as JsonSchemaType,
+        }),
+      },
+    };
+  }
+  return result;
 }
 
 interface AppServerBoundary {
@@ -544,7 +587,10 @@ export function createMCPToolCacheService(deps: MCPToolCacheDeps): MCPToolCacheS
         if (serverTools == null) {
           return null;
         }
-        return normalizeCachedToolKeys(serverTools, serverName);
+        return qualifyCatalogDescriptions(
+          serverName,
+          normalizeCachedToolKeys(serverTools, serverName),
+        );
       }
       const configGeneration = resolvedConfig
         ? getMCPAppToolsPublicationGeneration(resolvedConfig)
@@ -553,7 +599,7 @@ export function createMCPToolCacheService(deps: MCPToolCacheDeps): MCPToolCacheS
       if (!cached) {
         return null;
       }
-      return normalizeCachedToolKeys(cached, serverName);
+      return qualifyCatalogDescriptions(serverName, normalizeCachedToolKeys(cached, serverName));
     } catch {
       logger.error('[MCP Cache] Error fetching cached server tools');
       return null;

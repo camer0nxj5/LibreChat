@@ -893,7 +893,7 @@ async function loadToolDefinitionsWrapper({
   let kbPreloadFullCoverage = false;
   const requestEphemeralAgent =
     runtimeRequestBody?.ephemeralAgent ?? req.body?.ephemeralAgent;
-  const useKbCards = requestEphemeralAgent?.kb_cards === true;
+  const useKbCards = false;
   const originalText = runtimeRequestBody?.text ?? req.body?.text;
   const currentIntent = typeof originalText === 'string' ? originalText.trim() : '';
   let priorUserTexts = [];

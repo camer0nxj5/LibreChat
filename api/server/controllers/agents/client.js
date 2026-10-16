@@ -1,3 +1,4 @@
+const { preserveCJConversationOptions, captureCJRoutingResume } = require('@librechat/api');
 require('events').EventEmitter.defaultMaxListeners = 100;
 const {
   logger,
@@ -2002,29 +2003,32 @@ class AgentClient extends BaseClient {
     );
     const codeEnvironmentDecision = this.options.req._codeEnvironmentDecision;
 
-    return removeNullishValues(
-      Object.assign(
-        {
-          spec: this.options.spec,
-          iconURL: this.options.iconURL,
-          chatProjectId: this.options.chatProjectId,
-          endpoint: this.options.endpoint,
-          agent_id: this.options.agent.id,
-          modelLabel: this.options.modelLabel,
-          resendFiles: this.options.resendFiles,
-          imageDetail: this.options.imageDetail,
-          maxContextTokens: this.maxContextTokens,
-          codeApprovalMode,
-          codeEnvironmentMode:
-            codeEnvironmentDecision?.mode ?? this.options.req.body.codeEnvironmentMode,
-          codeWorkspaces:
-            codeEnvironmentDecision != null
-              ? codeEnvironmentDecision.codeWorkspaces
-              : this.options.req.body.codeWorkspaces,
-        },
-        // TODO: PARSE OPTIONS BY PROVIDER, MAY CONTAIN SENSITIVE DATA
-        runOptions,
+    return preserveCJConversationOptions(
+      removeNullishValues(
+        Object.assign(
+          {
+            spec: this.options.spec,
+            iconURL: this.options.iconURL,
+            chatProjectId: this.options.chatProjectId,
+            endpoint: this.options.endpoint,
+            agent_id: this.options.agent.id,
+            modelLabel: this.options.modelLabel,
+            resendFiles: this.options.resendFiles,
+            imageDetail: this.options.imageDetail,
+            maxContextTokens: this.maxContextTokens,
+            codeApprovalMode,
+            codeEnvironmentMode:
+              codeEnvironmentDecision?.mode ?? this.options.req.body.codeEnvironmentMode,
+            codeWorkspaces:
+              codeEnvironmentDecision != null
+                ? codeEnvironmentDecision.codeWorkspaces
+                : this.options.req.body.codeWorkspaces,
+          },
+          // TODO: PARSE OPTIONS BY PROVIDER, MAY CONTAIN SENSITIVE DATA
+          runOptions,
+        ),
       ),
+      this.options.req,
     );
   }
 
@@ -2910,6 +2914,10 @@ class AgentClient extends BaseClient {
       return canonicalMemoryCache.get(cacheKey);
     };
 
+    const { REMINDER, needsCurrentSources } = require('~/server/services/currentSources');
+    if (String(this.options.req.body.endpoint) !== 'ClawiQ' && this.options.req.body.ephemeralAgent?.current_sources === true && needsCurrentSources(this.options.req.body.text)) {
+      sharedRunContextParts.push(REMINDER);
+    }
     const sharedRunContext = sharedRunContextParts.join('\n\n');
     const memoryAgentEnabled = isMemoryAgentEnabled(this.options.req.config?.memory);
 
@@ -4260,6 +4268,7 @@ class AgentClient extends BaseClient {
     // (apiKey, credentials) and gateway config — resume re-resolves those server-side.
     // (Saved agents source params from the DB record, so this is belt-and-suspenders.)
     const resumeContext = pickResumeContext(this.options.req?.body);
+    captureCJRoutingResume(resumeContext, this.options.req);
     const resumeModelParameters = captureResumeModelParameters(
       this.options.req?.body,
       this.options.agent?.model_parameters,

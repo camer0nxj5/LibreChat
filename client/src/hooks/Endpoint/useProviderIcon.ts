@@ -1,3 +1,4 @@
+import { isUbuntuEndpoint, ubuntuIconURL } from '~/utils/ubuntuIcon';
 import { useMemo } from 'react';
 import { getEndpointField, resolveProviderId, endpointToProvider } from 'librechat-data-provider';
 import type { TEndpointsConfig, EModelEndpoint, ProviderId } from 'librechat-data-provider';
@@ -24,6 +25,7 @@ export function resolveProviderIcon({
   endpointsConfig,
   iconURL,
 }: ProviderIconParams): ProviderIconResolution {
+  if (isUbuntuEndpoint(endpoint) && (!iconURL || iconURL === endpoint)) return { provider: null, imageURL: ubuntuIconURL };
   const configured = getEndpointField(endpointsConfig, endpoint, 'iconURL');
   const candidate = iconURL || configured;
 

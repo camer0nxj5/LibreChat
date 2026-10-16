@@ -1,0 +1,22 @@
+{
+  "categories": {
+    "coding": {
+      "fireworks": { "label": "Fireworks fixture", "endpoint": "openAI", "model": "gpt-4o" },
+      "chatgpt": {
+        "label": "ChatGPT fixture",
+        "endpoint": "openAI",
+        "model": "gpt-4.1",
+        "useResponsesApi": true
+      }
+    },
+    "google_sheets": {
+      "fireworks": { "label": "Fireworks fixture", "endpoint": "openAI", "model": "gpt-4o" },
+      "chatgpt": {
+        "label": "ChatGPT fixture",
+        "endpoint": "openAI",
+        "model": "gpt-4.1",
+        "useResponsesApi": true
+      }
+    }
+  }
+}

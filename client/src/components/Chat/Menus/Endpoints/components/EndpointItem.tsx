@@ -1,3 +1,4 @@
+import { ubuntuIconURL } from '~/utils/ubuntuIcon';
 import { useCallback, useMemo } from 'react';
 import { VisuallyHidden } from '@ariakit/react';
 import { Spinner, TooltipAnchor } from '@librechat/client';
@@ -361,11 +362,22 @@ export function EndpointItem({ endpoint, endpointIndex }: EndpointItemProps) {
 }
 
 export function renderEndpoints(mappedEndpoints: Endpoint[]) {
-  return mappedEndpoints.map((endpoint, index) => (
-    <EndpointItem
-      endpoint={endpoint}
-      endpointIndex={index}
-      key={`endpoint-${endpoint.value}-${index}`}
-    />
-  ));
+  const ubuntu = mappedEndpoints.filter((endpoint) =>
+    ['Ubuntu vLLM', 'Ubuntu NInfer', 'Ubuntu CPU Titles'].includes(endpoint.value),
+  );
+  let renderedUbuntu = false;
+  return mappedEndpoints.map((endpoint, index) => {
+    if (ubuntu.includes(endpoint)) {
+      if (renderedUbuntu) return null;
+      renderedUbuntu = true;
+      return (
+        <Menu id="endpoint-ubuntu-group-menu" key="ubuntu-group" label={<span className="flex items-center gap-2"><img src={ubuntuIconURL} alt="" className="h-5 w-5 shrink-0" />Ubuntu</span>}>
+          {ubuntu.map((item) => (
+            <EndpointMenuContent key={item.value} endpoint={item} endpointIndex={mappedEndpoints.indexOf(item)} />
+          ))}
+        </Menu>
+      );
+    }
+    return <EndpointItem endpoint={endpoint} endpointIndex={index} key={`endpoint-${endpoint.value}-${index}`} />;
+  });
 }

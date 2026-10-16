@@ -4,6 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import MCPSelect from '../MCPSelect';
 
 const mockToggleServerSelection = jest.fn();
+let mockConfigDialogProps: { isOpen: boolean } | null = null;
 
 const defaultMcpServerManager = {
   localize: (key: string) => key,
@@ -17,7 +18,7 @@ const defaultMcpServerManager = {
   availableMCPServers: [{ serverName: 'server-a' }, { serverName: 'server-b' }],
   connectionStatus: {},
   isInitializing: () => false,
-  getConfigDialogProps: () => null,
+  getConfigDialogProps: () => mockConfigDialogProps,
   toggleServerSelection: mockToggleServerSelection,
   getServerStatusIconProps: () => null,
 };
@@ -62,15 +63,20 @@ jest.mock('@librechat/client', () => {
   };
 });
 
-jest.mock('~/components/MCP/MCPConfigDialog', () => ({
-  __esModule: true,
-  default: () => null,
-}));
+jest.mock('~/components/MCP/MCPConfigDialog', () => {
+  const R = require('react');
+  return {
+    __esModule: true,
+    default: ({ isOpen }: { isOpen: boolean }) =>
+      isOpen ? R.createElement('div', { role: 'dialog' }) : null,
+  };
+});
 
 describe('MCPSelect', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCanUseMcp = true;
+    mockConfigDialogProps = null;
     mockMcpServerManager = { ...defaultMcpServerManager };
   });
 
@@ -176,5 +182,60 @@ describe('MCPSelect', () => {
     mockMcpServerManager = { ...defaultMcpServerManager, isPinned: false, mcpValues: [] };
     const { container } = render(<MCPSelect />);
     expect(container.firstChild).toBeNull();
+  });
+  it('hides the generic control when Google is its only server without clearing selection', () => {
+    mockMcpServerManager = {
+      ...defaultMcpServerManager,
+      selectableServers: [
+        { serverName: 'CJ-Google-Tools', config: { title: 'Google Drive and Sheets' } },
+      ],
+      mcpValues: ['CJ-Google-Tools'],
+    };
+    const { container } = render(<MCPSelect />);
+    expect(container.firstChild).toBeNull();
+    expect(mockMcpServerManager.mcpValues).toEqual(['CJ-Google-Tools']);
+    expect(mockToggleServerSelection).not.toHaveBeenCalled();
+  });
+
+  it('omits Google from the label and menu while keeping other servers selectable', async () => {
+    mockMcpServerManager = {
+      ...defaultMcpServerManager,
+      selectableServers: [
+        ...defaultMcpServerManager.selectableServers,
+        { serverName: 'CJ-Google-Tools', config: { title: 'Google Drive and Sheets' } },
+      ],
+      mcpValues: ['CJ-Google-Tools', 'server-a'],
+    };
+    const user = userEvent.setup();
+    render(<MCPSelect />);
+    await user.click(screen.getByRole('button', { name: /Server A/i }));
+    expect(screen.queryByText('Google Drive and Sheets')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('menuitemcheckbox', { name: /Server B/i }));
+    expect(mockToggleServerSelection).toHaveBeenCalledWith('server-b');
+    expect(mockMcpServerManager.mcpValues).toContain('CJ-Google-Tools');
+  });
+
+  it('does not show an unpinned generic badge just because Google is selected', () => {
+    mockMcpServerManager = {
+      ...defaultMcpServerManager,
+      isPinned: false,
+      mcpValues: ['CJ-Google-Tools'],
+    };
+    const { container } = render(<MCPSelect />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('keeps connection configuration dialogs available while the Google-only selector is hidden', () => {
+    mockMcpServerManager = {
+      ...defaultMcpServerManager,
+      selectableServers: [
+        { serverName: 'CJ-Google-Tools', config: { title: 'Google Drive and Sheets' } },
+      ],
+      mcpValues: ['CJ-Google-Tools'],
+    };
+    mockConfigDialogProps = { isOpen: true };
+    render(<MCPSelect />);
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });

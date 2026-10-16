@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { Endpoint, SelectedValues } from '~/common';
-import { EndpointItem } from '../EndpointItem';
+import { EndpointItem, renderEndpoints } from '../EndpointItem';
 
 const mockHandleSelectEndpoint = jest.fn();
 const mockHandleOpenKeyDialog = jest.fn();
@@ -78,3 +78,12 @@ describe('EndpointItem', () => {
     expect(mockHandleSelectEndpoint).toHaveBeenCalledWith(customEndpoint);
   });
 });
+
+ it('groups Ubuntu transports under one menu without changing their identities', () => {
+  const endpoints = ['Ubuntu CPU Titles', 'Ubuntu NInfer', 'Ubuntu vLLM', 'Fireworks'].map(value => ({ value, label: value, hasModels: true, models: [], icon: null }));
+  const rows = renderEndpoints(endpoints).filter(Boolean) as React.ReactElement[];
+  expect(rows).toHaveLength(2);
+  expect(rows[0].props.label.props.children[1]).toBe('Ubuntu');
+  expect(rows[0].props.label.props.children[0].props.src).toBe('/assets/ubuntu-circle.svg');
+  expect(rows[0].props.children.map((child: React.ReactElement) => child.props.endpoint.value)).toEqual(endpoints.slice(0,3).map(endpoint => endpoint.value));
+ });

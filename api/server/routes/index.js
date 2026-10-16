@@ -44,6 +44,7 @@ const rum = require('./rum');
 const insights = require('./insights');
 
 module.exports = {
+  cjRouter: require('./cj-router'),
   insights,
   rum,
   mcp,

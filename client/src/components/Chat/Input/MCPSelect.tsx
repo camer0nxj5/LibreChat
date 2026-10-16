@@ -10,6 +10,7 @@ import { useMCPRefresh } from '~/hooks/MCP/useMCPRefresh';
 import { useHasAccess, useLocalize } from '~/hooks';
 import { useBadgeRowContext } from '~/Providers';
 import { cn } from '~/utils';
+import { genericMCPServers } from './mcpVisibility';
 
 function MCPSelectContent() {
   const localize = useLocalize();
@@ -41,13 +42,18 @@ function MCPSelectContent() {
     configDialogWasOpen.current = configDialogOpen;
   }, [configDialogOpen, menuStore]);
 
+  const selectableServers = useMemo(
+    () => genericMCPServers(manager?.selectableServers),
+    [manager?.selectableServers],
+  );
+
   const selectedServers = useMemo(() => {
     if (!manager?.mcpValues || manager.mcpValues.length === 0) {
       return [];
     }
     const selectedSet = new Set(manager.mcpValues);
-    return manager.selectableServers?.filter((s) => selectedSet.has(s.serverName)) ?? [];
-  }, [manager?.selectableServers, manager?.mcpValues]);
+    return selectableServers.filter((s) => selectedSet.has(s.serverName));
+  }, [selectableServers, manager?.mcpValues]);
 
   /** Counts what the menu actually offers, never the raw selection: a name the
    *  catalog has not returned — or one the admin has hidden — renders no row,
@@ -74,75 +80,73 @@ function MCPSelectContent() {
     isInitializing,
     placeholderText,
     connectionStatus,
-    selectableServers,
     getConfigDialogProps,
     toggleServerSelection,
     getServerStatusIconProps,
   } = manager;
 
-  if (!isPinned && mcpValues?.length === 0) {
-    return null;
-  }
-
+  const showSelector = selectableServers.length > 0 && (isPinned || selectedServers.length > 0);
   const configDialogProps = getConfigDialogProps();
 
   return (
     <>
-      <Ariakit.MenuProvider store={menuStore}>
-        <TooltipAnchor
-          description={placeholderText}
-          disabled={isOpen}
-          render={
-            <Ariakit.MenuButton
+      {showSelector && (
+        <Ariakit.MenuProvider store={menuStore}>
+          <TooltipAnchor
+            description={placeholderText}
+            disabled={isOpen}
+            render={
+              <Ariakit.MenuButton
+                className={cn(
+                  composerControlClasses(),
+                  'min-w-theme-control px-2.5 md:w-fit md:justify-start md:px-theme-normal',
+                  isOpen && 'bg-surface-hover',
+                )}
+              />
+            }
+          >
+            <StackedMCPIcons selectedServers={selectedServers} maxIcons={3} iconSize="sm" />
+            <span className="hidden truncate text-text-primary md:block">
+              {displayText || placeholderText}
+            </span>
+            <ChevronDown
               className={cn(
-                composerControlClasses(),
-                'min-w-theme-control px-2.5 md:w-fit md:justify-start md:px-theme-normal',
-                isOpen && 'bg-surface-hover',
+                'hidden h-3 w-3 text-text-secondary transition-transform md:block',
+                isOpen && 'rotate-180',
               )}
             />
-          }
-        >
-          <StackedMCPIcons selectedServers={selectedServers} maxIcons={3} iconSize="sm" />
-          <span className="hidden truncate text-text-primary md:block">
-            {displayText || placeholderText}
-          </span>
-          <ChevronDown
-            className={cn(
-              'hidden h-3 w-3 text-text-secondary transition-transform md:block',
-              isOpen && 'rotate-180',
-            )}
-          />
-        </TooltipAnchor>
+          </TooltipAnchor>
 
-        <Ariakit.Menu
-          portal={true}
-          gutter={8}
-          modal={true}
-          unmountOnHide={true}
-          aria-label={localize('com_ui_mcp_servers')}
-          className={cn(
-            'z-50 flex min-w-[260px] max-w-[320px] flex-col rounded-xl',
-            'border border-border-light bg-presentation p-1.5 shadow-lg',
-            'origin-top opacity-0 transition-[opacity,transform] duration-200 ease-out',
-            'data-[enter]:scale-100 data-[enter]:opacity-100',
-            'scale-95 data-[leave]:scale-95 data-[leave]:opacity-0',
-          )}
-        >
-          <div className="flex max-h-[320px] flex-col gap-1 overflow-y-auto">
-            {selectableServers.map((server) => (
-              <MCPServerMenuItem
-                key={server.serverName}
-                server={server}
-                isSelected={mcpValues?.includes(server.serverName) ?? false}
-                connectionStatus={connectionStatus}
-                isInitializing={isInitializing}
-                statusIconProps={getServerStatusIconProps(server.serverName)}
-                onToggle={toggleServerSelection}
-              />
-            ))}
-          </div>
-        </Ariakit.Menu>
-      </Ariakit.MenuProvider>
+          <Ariakit.Menu
+            portal={true}
+            gutter={8}
+            modal={true}
+            unmountOnHide={true}
+            aria-label={localize('com_ui_mcp_servers')}
+            className={cn(
+              'z-50 flex min-w-[260px] max-w-[320px] flex-col rounded-xl',
+              'border border-border-light bg-presentation p-1.5 shadow-lg',
+              'origin-top opacity-0 transition-[opacity,transform] duration-200 ease-out',
+              'data-[enter]:scale-100 data-[enter]:opacity-100',
+              'scale-95 data-[leave]:scale-95 data-[leave]:opacity-0',
+            )}
+          >
+            <div className="flex max-h-[320px] flex-col gap-1 overflow-y-auto">
+              {selectableServers.map((server) => (
+                <MCPServerMenuItem
+                  key={server.serverName}
+                  server={server}
+                  isSelected={mcpValues?.includes(server.serverName) ?? false}
+                  connectionStatus={connectionStatus}
+                  isInitializing={isInitializing}
+                  statusIconProps={getServerStatusIconProps(server.serverName)}
+                  onToggle={toggleServerSelection}
+                />
+              ))}
+            </div>
+          </Ariakit.Menu>
+        </Ariakit.MenuProvider>
+      )}
       {configDialogProps && (
         <MCPConfigDialog
           {...configDialogProps}

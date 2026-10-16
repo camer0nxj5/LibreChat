@@ -501,3 +501,50 @@ Before each new deployment revision run `npm run cj:revision` once, rebuild the 
 Files: `cj-revision.json`, `scripts/bump-cj-revision.mjs`, root npm script, `client/vite.config.ts`, `client/src/vite-env.d.ts`, and `client/src/components/Chat/ChatView.tsx`.
 
 Validation: production client build passed; isolated authenticated 393×852 and 1440×900 new-chat checks verified exact label, visibility, composer placement and viewport containment. Client typecheck matched the unchanged baseline diagnostics exactly (no new errors). Audit artifacts and source patch live in the project brief workspace under `latency-audit/librechat-version-20261006/`.
+
+## CJ Router escalation cards (2026-10-12)
+
+Authenticated CJ Router v2 assessment offers local, Fireworks, or OpenAI choices for coding and Google Sheets requests. Structured text and native buttons are bound by HMAC to the authenticated user, conversation, request, source endpoint and model. Selection changes only the runtime agent; conversation defaults remain local, including tool-approval resumes. Legacy clients continue locally until refreshed. Configuration uses `cjRouter` plus protected control/signing environment keys; destinations and labels live in CJ_Router_v2/routing.json. Focused backend, router, UI, browser-flow and Lighthouse checks cover the integration.
+
+
+### ClawiQ pre-OpenClaw escalation — October 13, 2026
+
+`cjRouter.engine: clawiq` verifies ClawiQ-signed coding/Sheets cards and resolves a backend-only, single-use permit. The configured endpoint remains ClawiQ for every choice. `attachClawiQPermit` injects the permit after provider configuration and suppresses LibreChat's tool registry, so OpenClaw owns tool execution. Conversation defaults stay local; sender labels reflect the cloud choice. Card message/labels/destinations live in ClawiQ/routing.json. OpenClaw receives the assembled conversation with an isolated user/session and per-request model header. Cloud GPT uses the existing API credential (API billing), preserving the gateway's existing ChatGPT login. Live release: CJ rev. 10.13.26 v.1; five HTTP/browser flow tests and three live provider smokes passed. Instruction/heartbeat cleanup and stable-prefix assembly remain future work.
+
+
+### Exact local history and execution continuity — October 13, v.2
+
+`attachClawiQPermit` also injects the server-generated `X-ClawiQ-Conversation` identity. First-turn and followup requests use the same local execution scope. ClawiQ forwards only a signed private snapshot reference to OpenClaw; CJ Router restores the newest exact LibreChat conversation and current tool loop. All six browser tests pass, including identity continuity. Local exclusions, native heartbeat suppression and NInfer-specific stable-prefix cache markers live in CJ_Router_v2. Cloud calls keep full tools and isolated per-request context. Protected history keys/snapshots never reach the browser. Release CJ rev. 10.13.26 v.2 preserves the existing Authentik startup guard and Compose deployment paths.
+
+## CJ rev. 10.13.26 v.3 — explicit routes and Google Tools
+
+Replace the ClawiQ Auto model spec with fetched local / configured cloud aliases. Persist card selections in both dropdown state and saved conversation options. Routing receives global state through the chat host. Google Tools toggles signed local policy on ClawiQ or selects CJ-Google-Tools via LibreChat MCP on direct routes; its native OAuth init opens authorization in the current browser. Google Web OAuth setup/live verification is pending credentials and callback registration; see CJ-Google-LibreChat/README.md. Remove KB Cards UI and ignore stale backend selections. Preserve all other customizations.
+
+## CJ rev. 10.14.26 v.4 — current deployed fork
+
+ClawiQ exposes local and configured Fireworks/OpenAI escalation routes. Signed
+single-use cards update the selected conversation route. Google Tools uses native
+browser OAuth on direct routes and authenticated tool-policy context on ClawiQ.
+LibreChat qualifies same-server MCP tool references consistently in descriptions;
+its dedicated Google control hides the redundant generic MCP entry.
+
+Mobile day/night styling includes a floating composer with aligned submit action,
+matching drawer/header controls, complete responsive table borders and wrapping,
+translucent headers, and iPhone safe-area layout. High-contrast selections retain
+one outer chat indicator. Ubuntu transports share a menu and the supplied orange
+Ubuntu mark; pinned model favorites sort by display name.
+
+Check current sources is an optional per-conversation composer toggle. It enables
+basic Search on direct routes and adds a dynamic reminder for freshness cues,
+excluding local-context phrases and explicit no-search requests. ClawiQ uses its
+existing search MCP and forwards the authenticated setting in local history
+snapshots; CJ Router v2 inserts the reminder after its stable prefix. Cloud ClawiQ
+requests receive one reminder. The feature encourages verification, not forced
+search, and does not grant tool access.
+
+This repository contains LibreChat integration source and disposable test
+fixtures. CJ Router v2/ClawiQ services and live deployment configuration remain
+separate projects. Keep credentials, databases, uploads and conversation archives
+outside Git. The deployed revision was verified with targeted component/API and
+routing tests, production builds, mobile browser persistence checks, and three
+live reply-only ClawiQ route checks after retirement of legacy routing services.

@@ -50,6 +50,7 @@ export default function useSubmitMessage() {
         },
         {
           addedConvo: addedConvo ?? undefined,
+          onCJRouteSubmitted: () => methods.reset(),
           // Queued during-run messages carry their own consumed attachments,
           // quote chips, and manual skill picks (undefined = drain composer).
           overrideFiles: data.overrideFiles,

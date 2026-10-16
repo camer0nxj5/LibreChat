@@ -3,7 +3,7 @@ import { Constants, normalizeServerName } from 'librechat-data-provider';
 import type { LCAvailableTools, ParsedServerConfig } from './types';
 import type { MCPToolCacheDeps, MCPToolInput } from './tools';
 import { getMCPAppToolsPublicationGeneration } from './toolsChanged';
-import { createMCPToolCacheService } from './tools';
+import { createMCPToolCacheService, formatMCPServerTools } from './tools';
 
 const requestScopedConfig: ParsedServerConfig = {
   type: 'streamable-http',
@@ -605,5 +605,84 @@ describe('createMCPToolCacheService', () => {
         createMCPToolCacheService(deps).getMCPServerTools('u1', 'server'),
       ).resolves.toBeNull();
     });
+  });
+});
+
+describe('formatMCPServerTools description references', () => {
+  it('uses the same final names for definitions, references and nested parameters without mutating the MCP response', () => {
+    const tools: MCPToolInput[] = [
+      { name: 'gs_get_spreadsheet', description: 'Metadata', inputSchema: { type: 'object' } },
+      {
+        name: 'gs_delete_sheet',
+        description: 'Use gs_get_spreadsheet first.',
+        inputSchema: {
+          type: 'object',
+          properties: { sheet_id: { type: 'number', description: 'From gs_get_spreadsheet.' } },
+        },
+      },
+    ];
+    const original = structuredClone(tools);
+    const catalog = formatMCPServerTools('CJ-Google-Tools', tools);
+    const fn = catalog['gs_delete_sheet_mcp_CJ-Google-Tools'].function;
+    expect(fn.description).toBe('Use gs_get_spreadsheet_mcp_CJ-Google-Tools first.');
+    expect(fn.parameters?.properties?.sheet_id.description).toBe(
+      'From gs_get_spreadsheet_mcp_CJ-Google-Tools.',
+    );
+    expect(tools).toEqual(original);
+    expect(
+      formatMCPServerTools('Other', tools)['gs_delete_sheet_mcp_Other'].function.description,
+    ).toBe('Use gs_get_spreadsheet_mcp_Other first.');
+  });
+
+  it('maps both raw and stripped aliases to normalized model-facing names, retaining execution names', () => {
+    const tools: MCPToolInput[] = [
+      {
+        name: 'files_read_file',
+        description: 'Use files_read_file and read_file.',
+        inputSchema: { type: 'object' },
+      },
+      {
+        name: 'files_write_file',
+        description: 'Use files_read_file.',
+        inputSchema: { type: 'object' },
+      },
+    ];
+    const catalog = formatMCPServerTools('files', tools);
+    expect(catalog['read_file_mcp_files'].serverToolName).toBe('files_read_file');
+    expect(catalog['read_file_mcp_files'].function.description).toBe(
+      'Use read_file_mcp_files and read_file_mcp_files.',
+    );
+  });
+});
+
+describe('cached MCP description rollout', () => {
+  it('qualifies legacy cached descriptions without changing stored catalog objects', async () => {
+    const cached = {
+      gs_get_spreadsheet_mcp_Google: {
+        type: 'function' as const,
+        function: {
+          name: 'gs_get_spreadsheet_mcp_Google',
+          description: 'Metadata',
+          parameters: { type: 'object' as const },
+        },
+      },
+      gs_delete_sheet_mcp_Google: {
+        type: 'function' as const,
+        function: {
+          name: 'gs_delete_sheet_mcp_Google',
+          description: 'Use gs_get_spreadsheet.',
+          parameters: { type: 'object' as const },
+        },
+      },
+    };
+    const original = structuredClone(cached);
+    const service = createMCPToolCacheService(
+      createMockDeps({ getCachedTools: jest.fn().mockResolvedValue(cached) }),
+    );
+    const result = await service.getMCPServerTools('user', 'Google');
+    expect(result?.gs_delete_sheet_mcp_Google.function.description).toBe(
+      'Use gs_get_spreadsheet_mcp_Google.',
+    );
+    expect(cached).toEqual(original);
   });
 });

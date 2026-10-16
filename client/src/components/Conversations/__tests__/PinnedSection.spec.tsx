@@ -166,6 +166,13 @@ describe('PinnedSection unified list', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('sorts pinned models by name despite stored order and hides retired endpoints', () => {
+    mockFavoritesData.favorites = [{model:'Zulu',endpoint:'openAI'}, {model:'alpha',endpoint:'openAI'}, {model:'old',endpoint:'LiteLLM'}];
+    mockPinnedOrder = ['model:6:openAI:Zulu','model:6:openAI:alpha'];
+    renderSection([pinnedConvo('c1','Pinned Chat')]);
+    expect(itemLabels()).toEqual(['alpha','Zulu','Pinned Chat']);
+  });
+
   it('renders favorites followed by pinned conversations in natural order', () => {
     mockFavoritesData.favorites = [{ model: 'gpt-4o', endpoint: 'openAI' }];
     renderSection([pinnedConvo('c1', 'Pinned Chat'), pinnedConvo('c2', 'Another Pin')]);

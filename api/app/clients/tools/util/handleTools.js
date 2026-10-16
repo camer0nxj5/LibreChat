@@ -461,7 +461,7 @@ const loadTools = async ({
       continue;
     } else if (tool === Tools.web_search) {
       const useAdvancedSearch = options.req?.body?.ephemeralAgent?.advanced_search === true;
-      const useKbCards = options.req?.body?.ephemeralAgent?.kb_cards === true;
+      const useKbCards = false;
       if (useAdvancedSearch || useKbCards || webSearch?.searchProvider === 'cj_router') {
         const resolveConfigValue = (value) => {
           const match = typeof value === 'string' && value.trim().match(/^\$\{([^}]+)\}$/);

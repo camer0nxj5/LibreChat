@@ -42,8 +42,9 @@ import useGetConversation from '~/hooks/Conversations/useGetConversation';
 import useCodeApprovalMode from '~/hooks/Agents/useCodeApprovalMode';
 import useSetFilesToDelete from '~/hooks/Files/useSetFilesToDelete';
 import useCodeWorkspace from '~/hooks/Agents/useCodeWorkspace';
+import useRouting from '~/components/Chat/Routing/useRouting';
 import useGetSender from '~/hooks/Conversations/useGetSender';
-import store, { useGetEphemeralAgent } from '~/store';
+import store, { useGetEphemeralAgent, ephemeralAgentByConvoId } from '~/store';
 import { startupConfigKey } from '~/data-provider';
 import useUserKey from '~/hooks/Input/useUserKey';
 import { useAuthContext } from '~/hooks';
@@ -224,6 +225,8 @@ export default function useChatFunctions({
   const getEphemeralAgent = useGetEphemeralAgent();
   const isTemporary = useRecoilValue(store.isTemporary);
   const { getExpiry } = useUserKey(immutableConversation?.endpoint ?? '');
+  const routingEphemeral = useRecoilValue(ephemeralAgentByConvoId(immutableConversation?.conversationId ?? Constants.NEW_CONVO));
+  const setRouteConversation = useSetRecoilState(store.conversationByIndex(index));
   const setIsSubmitting = useSetRecoilState(store.isSubmittingFamily(index));
   const setSubmissionStart = useSetRecoilState(store.submissionStartFamily(index));
   const setShowStopButton = useSetRecoilState(store.showStopButtonByIndex(index));
@@ -279,7 +282,7 @@ export default function useChatFunctions({
     [],
   );
 
-  const ask: TAskFunction = (
+  const send: TAskFunction = (
     {
       text,
       overrideConvoId,
@@ -305,6 +308,7 @@ export default function useChatFunctions({
       overrideRecoverySteerId,
       overrideExpectedPredecessorCreatedAt,
       overrideQueuedMessageOrigin,
+      cjRouteDecision,
     } = {},
   ) => {
     text = text.trim();
@@ -327,6 +331,9 @@ export default function useChatFunctions({
     }
 
     const conversation = cloneDeep(immutableConversation);
+    if (!conversation) {
+      return false;
+    }
     const latestCodeApprovalMode = getConversation()?.codeApprovalMode;
     const codeApprovalMode =
       latestCodeApprovalMode != null && codeApprovalModes.includes(latestCodeApprovalMode)
@@ -757,7 +764,14 @@ export default function useChatFunctions({
       ...(compact && { compact: true }),
       initialResponse,
       isTemporary,
-      ephemeralAgent,
+      ephemeralAgent: {
+        ...ephemeralAgent,
+        kb_cards: false,
+        mcp: String(endpoint) === 'ClawiQ' ? [] : [
+          ...(ephemeralAgent?.mcp ?? []).filter((name) => name !== 'CJ-Google-Tools'),
+          ...(ephemeralAgent?.google_tools === true ? ['CJ-Google-Tools'] : []),
+        ],
+      },
       editedContent,
       editPrefixLength,
       addedConvo,
@@ -769,6 +783,7 @@ export default function useChatFunctions({
       recoverySteerId: overrideRecoverySteerId,
       expectedPredecessorCreatedAt: overrideExpectedPredecessorCreatedAt,
       queuedMessageOrigin: overrideQueuedMessageOrigin,
+      cjRouteDecision,
     };
 
     /** Opening an old conversation must not redefine the next New Chat model.
@@ -800,6 +815,12 @@ export default function useChatFunctions({
     setSubmission(submission);
     logger.dir('message_stream', submission, { depth: null });
   };
+
+  const ask = useRouting(send, immutableConversation, index, {
+    googleTools: routingEphemeral?.google_tools === true,
+    currentSources: routingEphemeral?.current_sources === true,
+    selectModel: (model) => setRouteConversation((previous) => previous ? { ...previous, model, spec: undefined } : previous),
+  });
 
   const regenerate = (
     message: Partial<Pick<TMessage, 'messageId' | 'parentMessageId' | 'isCreatedByUser'>>,

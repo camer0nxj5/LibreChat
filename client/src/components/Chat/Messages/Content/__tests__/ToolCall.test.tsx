@@ -1,9 +1,14 @@
 import React from 'react';
 import { RecoilRoot } from 'recoil';
-import { Tools, Constants } from 'librechat-data-provider';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { Tools, Constants, dataService } from 'librechat-data-provider';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { ToolAuthWarningContext } from '../auth';
 import ToolCall from '../ToolCall';
+
+jest.mock('librechat-data-provider', () => {
+  const actual = jest.requireActual('librechat-data-provider');
+  return { ...actual, dataService: { ...actual.dataService, bindMCPOAuth: jest.fn() } };
+});
 
 // Mock dependencies
 jest.mock('~/hooks', () => ({
@@ -85,11 +90,14 @@ jest.mock('../Parts', () => ({
 }));
 
 jest.mock('@librechat/client', () => ({
-  Button: ({ children, onClick, ...props }: any) => (
-    <button onClick={onClick} {...props}>
-      {children}
-    </button>
-  ),
+  Button: ({ children, onClick, asChild, ...props }: any) =>
+    asChild ? (
+      require('react').cloneElement(children, { onClick, ...props })
+    ) : (
+      <button onClick={onClick} {...props}>
+        {children}
+      </button>
+    ),
 }));
 
 jest.mock('lucide-react', () => ({
@@ -351,11 +359,7 @@ describe('ToolCall', () => {
       expect(signInButton).toBeInTheDocument();
 
       fireEvent.click(signInButton);
-      expect(window.open).toHaveBeenCalledWith(
-        'https://auth.example.com',
-        '_blank',
-        'noopener,noreferrer',
-      );
+      expect(window.open).toHaveBeenCalledWith('about:blank', '_blank');
 
       window.open = originalOpen;
     });
@@ -635,5 +639,101 @@ describe('ToolCall', () => {
       expect(liveRegion).not.toBeNull();
       expect(liveRegion!.className).toContain('sr-only');
     });
+  });
+});
+
+describe('mobile OAuth tab activation', () => {
+  const url =
+    'https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=https%3A%2F%2Fapp.example%2Fapi%2Fmcp%2FCJ-Google-Tools%2Foauth%2Fcallback';
+  const props = {
+    args: '{}',
+    name: `oauth${Constants.mcp_delimiter}CJ-Google-Tools`,
+    initialProgress: 0.5,
+    isSubmitting: true,
+    auth: url,
+  };
+
+  it('reserves a tab before waiting for CSRF binding and navigates only after success', async () => {
+    let finish!: (result: { success: boolean }) => void;
+    const binding = new Promise<{ success: boolean }>((resolve) => {
+      finish = resolve;
+    });
+    const bind = jest.spyOn(dataService, 'bindMCPOAuth').mockReturnValue(binding);
+    const popup = {
+      opener: window,
+      closed: false,
+      close: jest.fn(),
+      location: { replace: jest.fn() },
+    };
+    const open = jest.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+    try {
+      render(
+        <RecoilRoot>
+          <ToolCall {...props} />
+        </RecoilRoot>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in to accounts.google.com' }));
+      expect(open).toHaveBeenCalledWith('about:blank', '_blank');
+      expect(open.mock.invocationCallOrder[0]).toBeLessThan(bind.mock.invocationCallOrder[0]);
+      expect(popup.opener).toBeNull();
+      expect(popup.location.replace).not.toHaveBeenCalled();
+      await act(async () => {
+        finish({ success: true });
+      });
+      expect(popup.location.replace).toHaveBeenCalledWith(url);
+    } finally {
+      open.mockRestore();
+      bind.mockRestore();
+    }
+  });
+
+  it('offers a native Google link after binding if the browser blocks popups', async () => {
+    const open = jest.spyOn(window, 'open').mockReturnValue(null);
+    const bind = jest.spyOn(dataService, 'bindMCPOAuth').mockResolvedValue({ success: true });
+    try {
+      render(
+        <RecoilRoot>
+          <ToolCall {...props} />
+        </RecoilRoot>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in to accounts.google.com' }));
+      const link = await screen.findByRole('link', { name: 'Sign in to accounts.google.com' });
+      expect(link).toHaveAttribute('href', url);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    } finally {
+      open.mockRestore();
+      bind.mockRestore();
+    }
+  });
+
+  it('closes the reserved tab and never navigates if cookie binding fails', async () => {
+    const popup = {
+      opener: window,
+      closed: false,
+      close: jest.fn(),
+      location: { replace: jest.fn() },
+    };
+    const open = jest.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+    const bind = jest
+      .spyOn(dataService, 'bindMCPOAuth')
+      .mockRejectedValue(new Error('binding failed'));
+    try {
+      render(
+        <RecoilRoot>
+          <ToolCall {...props} />
+        </RecoilRoot>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in to accounts.google.com' }));
+      await waitFor(() => expect(popup.close).toHaveBeenCalled());
+      expect(popup.location.replace).not.toHaveBeenCalled();
+      expect(
+        screen.queryByRole('link', { name: 'Sign in to accounts.google.com' }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    } finally {
+      open.mockRestore();
+      bind.mockRestore();
+    }
   });
 });

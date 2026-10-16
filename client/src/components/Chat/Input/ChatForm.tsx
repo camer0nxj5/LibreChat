@@ -1,4 +1,5 @@
 import { memo, useRef, useMemo, useEffect, useState, useCallback } from 'react';
+import { useAtomValue } from 'jotai';
 import { useWatch } from 'react-hook-form';
 import { useRecoilState, useRecoilValue, useRecoilCallback } from 'recoil';
 import { Constants, isAssistantsEndpoint, isAgentsEndpoint } from 'librechat-data-provider';
@@ -46,6 +47,7 @@ import PastedTextDialog from './Files/PastedTextDialog';
 import DuringRunSendButton from './DuringRunSendButton';
 import ProjectLandingChip from '../ProjectLandingChip';
 import { useGetStartupConfig } from '~/data-provider';
+import { routingStateFamily } from '../Routing/state';
 import { mainTextareaId, BadgeItem } from '~/common';
 import PendingSteerChips from './PendingSteerChips';
 import PendingQuoteChips from './PendingQuoteChips';
@@ -60,6 +62,7 @@ import PromptsCommand from './PromptsCommand';
 import SkillsCommand from './SkillsCommand';
 import AudioRecorder from './AudioRecorder';
 import AutoPlayAudio from './AutoPlayAudio';
+import RoutingCard from '../Routing/Card';
 import CollapseChat from './CollapseChat';
 import QuoteButton from './QuoteButton';
 import TokenUsage from './TokenUsage';
@@ -102,6 +105,7 @@ interface ChatFormProps {
  * (Ariakit and Radix both emit `aria-haspopup`), and popup content, which React
  * bubbles through portals. */
 const focusOwningTargetSelector = [
+  '[data-chat-action-card]',
   'a',
   'input',
   'select',
@@ -136,6 +140,7 @@ const ChatForm = memo(function ChatForm({
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   useFocusChatEffect(textAreaRef);
   const localize = useLocalize();
+  const routingPending = useAtomValue(routingStateFamily(index)) != null;
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [, setIsScrollable] = useState(false);
@@ -199,8 +204,8 @@ const ChatForm = memo(function ChatForm({
     [conversation?.assistant_id, endpoint, assistantMap],
   );
   const disableInputs = useMemo(
-    () => requiresKey || invalidAssistant,
-    [requiresKey, invalidAssistant],
+    () => requiresKey || invalidAssistant || routingPending,
+    [requiresKey, invalidAssistant, routingPending],
   );
 
   /** Skipped on touchscreens so a tap does not raise the keyboard. */
@@ -641,6 +646,7 @@ const ChatForm = memo(function ChatForm({
         {/* `relative` anchors the in-flight steer overlay, which floats above
             the composer (`bottom-full`) over the bottom of the thread. */}
         <div className="relative flex w-full flex-col">
+          <RoutingCard index={index} />
           {/* Run-scoped: `enabled` alone is any primary composer on a steerable
               endpoint, so a chip that outlives the run would strand a bubble. */}
           {steering.enabled && isSubmitting && (
@@ -823,7 +829,7 @@ const ChatForm = memo(function ChatForm({
               )}
               <div
                 className={cn(
-                  '@container flex flex-wrap items-center gap-2 px-2 pb-2',
+                  'cj-composer-actions @container flex flex-wrap items-center gap-2 px-2 pb-2',
                   isRTL ? 'flex-row-reverse' : 'flex-row',
                 )}
               >

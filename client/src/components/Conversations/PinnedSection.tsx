@@ -1,3 +1,4 @@
+import { endpointModelDisplayName } from '~/components/Chat/Menus/Endpoints/utils';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useDrag, useDragLayer, useDrop } from 'react-dnd';
@@ -454,7 +455,21 @@ const PinnedSection = ({
     dragMembershipRef.current = naturalEntries;
   }
 
-  const displayEntries = liveEntries ?? orderedEntries;
+  const displayEntries = useMemo(() => {
+    const entries = (liveEntries ?? orderedEntries).filter((entry) => entry.kind !== 'favorite' ||
+      !['LiteLLM', 'CJ LiteLLM', 'CJ OpenClaw', 'OpenClaw'].includes(entry.favorite.endpoint ?? ''));
+    const label = (entry: PinnedEntry) => {
+      if (entry.kind !== 'favorite') return '';
+      const favorite = entry.favorite;
+      if (favorite.spec) return favoritesData.specsMap[favorite.spec]?.label ?? favorite.spec;
+      if (favorite.agentId) return favoritesData.agentsMap[favorite.agentId]?.name ?? favorite.agentId;
+      return endpointModelDisplayName(favorite.endpoint ?? '', favorite.model ?? null) ?? favorite.model ?? '';
+    };
+    const models = entries.filter((entry) => entry.kind === 'favorite').slice()
+      .sort((a, b) => label(a).localeCompare(label(b), undefined, { numeric: true, sensitivity: 'base' }));
+    let index = 0;
+    return entries.map((entry) => entry.kind === 'favorite' ? models[index++] : entry);
+  }, [liveEntries, orderedEntries, favoritesData.specsMap, favoritesData.agentsMap]);
 
   /** Live index of a key in the list the drag is mutating, so a hover can tell
    *  which side of the hovered row the drag is coming from. */
